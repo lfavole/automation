@@ -5,6 +5,8 @@ from typing import Mapping, MutableMapping
 from urllib.parse import urlencode
 from urllib.request import urlopen, Request
 
+from oauth_token import Token
+
 
 class CaseInsensitiveDict(MutableMapping[str, str]):
     def __init__(self, data=None, **kwargs):
@@ -66,13 +68,18 @@ class Response:
         return json.loads(self.text)
 
 
-def request(method, url, params=None, data=None):
+def request(method, url, params=None, data=None, headers=None, token: Token | None = None):
     if method == "GET" and data:
         params = data
         data = None
+    if headers is None:
+        headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token.access_token}"
     req = Request(
         url + ("?" + urlencode(params) if params else ""),
         data=None if data is None else urlencode(data).encode(),
+        headers=headers,
         method=method,
     )
     resp = urlopen(req)

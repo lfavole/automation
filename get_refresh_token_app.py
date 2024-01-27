@@ -4,7 +4,7 @@ from flask import Flask, redirect, request, session
 import custom_requests
 from get_secrets import get_secret
 
-from oauth_token import ensure_valid_token, Token
+from oauth_token import Token
 
 app = Flask(__name__)
 
@@ -58,7 +58,8 @@ def provider_oauth(provider):
         )
         data = req.json()
         token = Token(data["access_token"], data["refresh_token"], data["expires_in"])
-        ensure_valid_token(token)
+        token.ensure_valid()
+        token.save()
         session[provider] = token.refresh_token
         return redirect("/" + provider)
 

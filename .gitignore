@@ -1,2 +1,4 @@
 *.pyc
+messages.json
 secrets.json
+tokens.json
