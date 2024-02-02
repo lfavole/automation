@@ -82,8 +82,8 @@ def request(method, url, params=None, data=None, headers=None, token: Token | No
         headers=headers,
         method=method,
     )
-    resp = urlopen(req)
-    return Response(resp.read(), resp.code, CaseInsensitiveDict(resp.headers))
+    with urlopen(req) as resp:
+        return Response(resp.read(), resp.code, CaseInsensitiveDict(resp.headers))
 
 
 def get(*args, **kwargs):
