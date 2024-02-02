@@ -1,7 +1,8 @@
+import uuid
 from urllib.parse import unquote, urlencode
 
 import custom_requests
-from flask import Flask, abort, redirect, request, session
+from flask import Flask, Response, abort, redirect, request, session
 from get_secrets import get_secret
 from oauth_token import Token
 
@@ -25,9 +26,6 @@ def favicon():
 
 @app.route("/<provider>")
 def provider_oauth(provider):
-    if provider in session:
-        return f"Refresh token is: {session[provider]}"
-
     client_id = get_secret(provider.upper() + "_CLIENT_ID")
     client_secret = get_secret(provider.upper() + "_CLIENT_SECRET")
 
@@ -39,7 +37,7 @@ def provider_oauth(provider):
     }
 
     if "error" in params:
-        return f"Error: {params['error']}"
+        return Response(f"Error: {params['error']}", content_type="text/plain")
 
     if "code" in params:
         access_token_method = {
@@ -52,7 +50,7 @@ def provider_oauth(provider):
         }[provider]
 
         if provider == "todoist":
-            state = session["state"]
+            state = session["TODOIST_STATE"]
             if state != params["state"]:
                 return "State mismatch"
 
@@ -63,7 +61,7 @@ def provider_oauth(provider):
                 "redirect_uri": redirect_uri,
             },
             "todoist": {},
-        }
+        }[provider]
 
         req = custom_requests.request(
             access_token_method,
@@ -76,16 +74,29 @@ def provider_oauth(provider):
             },
         )
         data = req.json()
-        token = Token(data["access_token"], data["refresh_token"], data["expires_in"])
-        token.ensure_valid()
+        token = Token(data["access_token"], data.get("refresh_token", ""), data.get("expires_in", ""))
+        token.ensure_valid(provider)
         token.save()
-        session[provider] = token.refresh_token
+        session[provider] = True
         return redirect("/" + provider)
+
+    token = Token.from_file(provider)
+    if token:
+        return Response(f"""\
+Access token: {token.access_token}
+
+Refresh token: {token.refresh_token}
+
+Expires at: {token.expires_at}
+""", content_type="text/plain")
 
     url = {
         "google": "https://accounts.google.com/o/oauth2/v2/auth",
         "todoist": "https://todoist.com/oauth/authorize",
     }[provider]
+    if "TODOIST_STATE" not in session:
+        session["TODOIST_STATE"] = str(uuid.uuid4())
+        session.modified = True
     params = {
         "google": {
             "scope": "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/gmail.readonly",
@@ -97,8 +108,8 @@ def provider_oauth(provider):
         },
         "todoist": {
             "client_id": client_id,
-            "scope": "task:add data:delete",
-            "state": session.setdefault("TODOIST_STATE", str(uuid.uuid4())),
+            "scope": "task:add,data:delete",
+            "state": session["TODOIST_STATE"],
         },
     }[provider]
 
@@ -106,6 +117,5 @@ def provider_oauth(provider):
 
 
 if __name__ == "__main__":
-    import uuid
     app.secret_key = str(uuid.uuid4())
     app.run(debug=True)

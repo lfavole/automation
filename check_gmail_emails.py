@@ -1,13 +1,14 @@
 import datetime as dt
 import json
 from pathlib import Path
+
 import custom_requests
 from oauth_token import Token
 
 token = Token.from_file()
 token.ensure_valid()
 
-MESSAGES_FILE = Path(__file__).parent / "messages.json"
+MESSAGES_FILE = Path(__file__).parent / "gmail_messages.json"
 if not MESSAGES_FILE.exists():
     MESSAGES_FILE.touch()
     old_messages = []

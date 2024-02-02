@@ -5,32 +5,42 @@ from pathlib import Path
 
 import custom_requests
 
-TOKENS_FILE = Path(__file__).parent / "tokens.json"
-
 
 class Token:
-    def __init__(self, access_token="", refresh_token="", expires_at=""):
+    def __init__(self, access_token="", refresh_token="", expires_at="", provider="google"):
         self.access_token = access_token
         self.refresh_token = refresh_token
-        try:
-            self.expires_at = dt.datetime.fromisoformat(expires_at)
-        except (TypeError, ValueError):
-            self.expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_at))  # expires_in
+        self.provider = provider
+
+        if expires_at:
+            try:
+                self.expires_at = dt.datetime.fromisoformat(expires_at)
+            except (TypeError, ValueError):
+                self.expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_at))  # expires_in
+        else:
+            self.expires_at = None
+
+    @property
+    def file(self):
+        return Path(__file__).parent / f"{self.provider}_token.json"
 
     def save(self):
-        TOKENS_FILE.write_text(
+        self.file.write_text(
             json.dumps(
                 {
                     "access_token": self.access_token,
                     "refresh_token": self.refresh_token,
-                    "expires_at": str(self.expires_at),
+                    "expires_at": str(self.expires_at) if self.expires_at else None,
                 }
             )
         )
 
     @classmethod
-    def from_file(cls):
-        data = json.loads(TOKENS_FILE.read_text())
+    def from_file(cls, provider="google"):
+        file = Path(__file__).parent / f"{provider}_token.json"
+        if not file.exists():
+            return None
+        data = json.loads(file.read_text())
         return cls(data["access_token"], data["refresh_token"], data["expires_at"])
 
     def ensure_valid(self, provider="google"):
