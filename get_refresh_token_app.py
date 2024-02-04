@@ -14,6 +14,7 @@ def index():
     return """\
 <ul>
     <li><a href="/google">Google</a></li>
+    <li><a href="/ticktick">TickTick</a></li>
     <li><a href="/todoist">Todoist</a></li>
 </ul>
 """
@@ -40,13 +41,11 @@ def provider_oauth(provider):
         return Response(f"Error: {params['error']}", content_type="text/plain")
 
     if "code" in params:
-        access_token_method = {
-            "google": "POST",
-            "todoist": "POST",
-        }[provider]
+        access_token_method = {}.get(provider, "POST")
         access_token_url = {
             "google": "https://oauth2.googleapis.com/token",
             "todoist": "https://todoist.com/oauth/access_token",
+            "ticktick": "https://ticktick.com/oauth/token",
         }[provider]
 
         if provider == "todoist":
@@ -60,8 +59,12 @@ def provider_oauth(provider):
                 "grant_type": "authorization_code",
                 "redirect_uri": redirect_uri,
             },
-            "todoist": {},
-        }[provider]
+            "ticktick": {
+                "grant_type": "authorization_code",
+                "scope": "tasks:write tasks:read",
+                "redirect_uri": redirect_uri,
+            }
+        }.get(provider, {})
 
         req = custom_requests.request(
             access_token_method,
@@ -74,8 +77,8 @@ def provider_oauth(provider):
             },
         )
         data = req.json()
-        token = Token(data["access_token"], data.get("refresh_token", ""), data.get("expires_in", ""))
-        token.ensure_valid(provider)
+        token = Token(data["access_token"], data.get("refresh_token", ""), data.get("expires_in", ""), provider)
+        token.ensure_valid()
         token.save()
         session[provider] = True
         return redirect("/" + provider)
@@ -93,10 +96,16 @@ Expires at: {token.expires_at}
     url = {
         "google": "https://accounts.google.com/o/oauth2/v2/auth",
         "todoist": "https://todoist.com/oauth/authorize",
+        "ticktick": "https://ticktick.com/oauth/authorize",
     }[provider]
+
     if "TODOIST_STATE" not in session:
         session["TODOIST_STATE"] = str(uuid.uuid4())
         session.modified = True
+    if "TICKTICK_STATE" not in session:
+        session["TICKTICK_STATE"] = str(uuid.uuid4())
+        session.modified = True
+
     params = {
         "google": {
             "scope": "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/gmail.readonly",
@@ -110,6 +119,13 @@ Expires at: {token.expires_at}
             "client_id": client_id,
             "scope": "task:add,data:delete",
             "state": session["TODOIST_STATE"],
+        },
+        "ticktick": {
+            "client_id": client_id,
+            "scope": "tasks:write tasks:read",
+            "state": session["TICKTICK_STATE"],
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
         },
     }[provider]
 
