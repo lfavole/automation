@@ -1,9 +1,7 @@
-import email
-import email.header
-import email.policy
 import imaplib
 
 from get_secrets import get_secret
+from handle_messages import handle_new_message
 
 messages = []
 
@@ -22,12 +20,5 @@ finally:
     conn.logout()
 
 
-def get_header(msg, header):
-    header_data = email.header.decode_header(msg[header])
-    header = email.header.make_header(header_data)
-    return str(header)
-
-
 for msg in messages:
-    msg = email.message_from_bytes(msg, policy=email.policy.default)
-    subject = get_header(msg, "Subject")
+    handle_new_message(None, lambda: msg)
