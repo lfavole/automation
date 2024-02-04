@@ -1,7 +1,7 @@
 import imaplib
 
 from get_secrets import get_secret
-from handle_messages import handle_new_message
+from handle_messages import defer, handle_messages_list
 
 messages = []
 
@@ -20,5 +20,7 @@ finally:
     conn.logout()
 
 
-for msg in messages:
-    handle_new_message(None, lambda: msg)
+handle_messages_list("gmx", [(None, defer(message)) for message in messages])
+
+# for msg in messages:
+#     handle_new_message(None, defer(msg))

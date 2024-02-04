@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import custom_requests
-from handle_messages import handle_deleted_message, handle_new_message
+from handle_messages import handle_deleted_message, handle_messages_list, handle_new_message
 from oauth_token import Token
 
 token = Token.from_file("google")
@@ -16,7 +16,7 @@ if not MESSAGES_FILE.exists():
 else:
     old_messages = json.loads(MESSAGES_FILE.read_text())
 
-messages = [
+message_ids = [
     message["id"]
     for message in custom_requests.get_with_pages(
         "https://gmail.googleapis.com/gmail/v1/users/me/messages",
@@ -28,39 +28,46 @@ messages = [
     )
 ]
 
-new = []
-deleted = []
 
-for message in messages:
-    if message not in old_messages:
-        new.append(message)
-
-for message in old_messages:
-    if message not in messages:
-        deleted.append(message)
-
-
-print("New messages:", *new)
-
-
-def get_content(message):
+def get_content(message_id):
     data = custom_requests.get(
-        f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message}?format=raw",
+        f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}?format=raw",
         token=token,
     ).json()
     return base64.urlsafe_b64decode(data["raw"])
 
 
-for message in new:
-    handle_new_message(message, get_content)
-    old_messages.append(message)
+def defer_get_content(message_id):
+    return lambda: get_content(message_id)
 
-print("Deleted messages:", *deleted)
 
-for message in deleted:
-    handle_deleted_message(message, get_content)
-    old_messages.remove(message)
+handle_messages_list("gmail", [(message_id, defer_get_content(message_id)) for message_id in message_ids])
 
-MESSAGES_FILE.write_text(json.dumps(messages))
+# new = []
+# deleted = []
 
-assert old_messages == messages
+# for message in message_ids:
+#     if message not in old_messages:
+#         new.append(message)
+
+# for message in old_messages:
+#     if message not in message_ids:
+#         deleted.append(message)
+
+
+# print("New messages:", *new)
+
+
+# for message in new:
+#     handle_new_message(message, get_content)
+#     old_messages.append(message)
+
+# print("Deleted messages:", *deleted)
+
+# for message in deleted:
+#     handle_deleted_message(message, get_content)
+#     old_messages.remove(message)
+
+# MESSAGES_FILE.write_text(json.dumps(message_ids))
+
+# assert old_messages == message_ids
