@@ -1,9 +1,10 @@
+import json
 from dataclasses import dataclass
 from functools import cache
-import json
 from typing import Mapping, MutableMapping
+from urllib.error import HTTPError
 from urllib.parse import urlencode
-from urllib.request import urlopen, Request
+from urllib.request import Request, urlopen
 
 from oauth_token import Token
 
@@ -68,7 +69,10 @@ class Response:
         return json.loads(self.text)
 
 
-def request(method, url, params=None, data=None, headers=None, token: Token | None = None):
+dumps = json.dumps
+
+
+def request(method, url, params=None, data=None, headers=None, token: Token | None = None, json=None):
     if method == "GET" and data:
         params = data
         data = None
@@ -76,14 +80,21 @@ def request(method, url, params=None, data=None, headers=None, token: Token | No
         headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token.access_token}"
+    if json:
+        headers["Content-Type"] = "application/json"
+        data = dumps(json)
     req = Request(
         url + ("?" + urlencode(params) if params else ""),
-        data=None if data is None else urlencode(data).encode(),
+        data=None if data is None else data.encode() if isinstance(data, str) else urlencode(data).encode(),
         headers=headers,
         method=method,
     )
-    with urlopen(req) as resp:
-        return Response(resp.read(), resp.code, CaseInsensitiveDict(resp.headers))
+    try:
+        with urlopen(req) as resp:
+            return Response(resp.read(), resp.code, CaseInsensitiveDict(resp.headers))
+    except HTTPError as err:
+        err.response = Response(err.fp.read(), err.code, err.headers)  # type: ignore
+        raise
 
 
 def get(*args, **kwargs):
@@ -92,3 +103,30 @@ def get(*args, **kwargs):
 
 def post(*args, **kwargs):
     return request("POST", *args, **kwargs)
+
+
+def get_with_pages(*args, params=None, **kwargs):
+    if params is None:
+        params = {}
+
+    items = []
+    next_page_token = None
+    while True:
+        data = get(
+            *args,
+            params={
+                **params,
+                **({"pageToken": next_page_token} if next_page_token else {}),
+            },
+            **kwargs,
+        ).json()
+
+        for value in data.values():
+            if isinstance(value, list):
+                items.extend(value)
+
+        next_page_token = data.get("nextPageToken")
+        if next_page_token is None:
+            break
+
+    return items
