@@ -1,9 +1,9 @@
 import imaplib
 
+from email_utils import defer, handle_message_list
 from get_secrets import get_secret
-from handle_messages import defer, handle_messages_list
 
-messages = []
+messages: list[bytes] = []
 
 conn = imaplib.IMAP4_SSL("imap.gmx.com")
 try:
@@ -20,7 +20,4 @@ finally:
     conn.logout()
 
 
-handle_messages_list("gmx", [(None, defer(message)) for message in messages])
-
-# for msg in messages:
-#     handle_new_message(None, defer(msg))
+handle_message_list("gmx", [(None, defer(message)) for message in messages])

@@ -1,6 +1,5 @@
 import datetime as dt
 import json
-import os
 from pathlib import Path
 
 import custom_requests
@@ -8,7 +7,10 @@ from get_secrets import get_secret
 
 
 class Token:
-    def __init__(self, access_token="", refresh_token="", expires_at="", provider="google"):
+    """
+    An OAuth2 access/refresh token to access a service.
+    """
+    def __init__(self, access_token="", refresh_token="", expires_at="", *, provider):
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.provider = provider
@@ -21,11 +23,19 @@ class Token:
         else:
             self.expires_at = None
 
+        self.ensure_valid()
+
     @property
     def file(self):
+        """
+        File containing the token.
+        """
         return Path(__file__).parent / f"{self.provider}_token.json"
 
     def save(self):
+        """
+        Save the token to its file.
+        """
         self.file.write_text(
             json.dumps(
                 {
@@ -37,14 +47,20 @@ class Token:
         )
 
     @classmethod
-    def from_file(cls, provider="google"):
+    def from_file(cls, provider):
+        """
+        Gets the token from its file. If it doesn't exist, raise an error.
+        """
         file = Path(__file__).parent / f"{provider}_token.json"
         if not file.exists():
-            return None
+            raise RuntimeError(f"Can't find {provider} token")
         data = json.loads(file.read_text())
-        return cls(data["access_token"], data["refresh_token"], data["expires_at"])
+        return cls(data["access_token"], data["refresh_token"], data["expires_at"], provider=provider)
 
     def ensure_valid(self):
+        """
+        Ensure the token is valid. This is called automatically during initialization.
+        """
         if self.provider == "google" and self.expires_at and dt.datetime.now() > self.expires_at:
             try:
                 data = custom_requests.get(
@@ -54,27 +70,25 @@ class Token:
             except OSError:
                 pass
 
-        TOKEN_REFRESH_URLS = {
+        token_refresh_url = {
             "google": "https://oauth2.googleapis.com/token",
-        }
-        PARAMS = {
+        }.get(self.provider)
+        params = {
             "google": {
                 "client_id": get_secret(self.provider.upper() + "_CLIENT_ID"),
                 "client_secret": get_secret(self.provider.upper() + "_CLIENT_SECRET"),
                 "refresh_token": self.refresh_token,
                 "grant_type": "refresh_token",
             }
-        }
-        token_refresh_url = TOKEN_REFRESH_URLS.get(self.provider)
-        params = PARAMS.get(self.provider)
+        }.get(self.provider)
         if not token_refresh_url or not params:
             return
 
         try:
             data = custom_requests.post(token_refresh_url, params).json()
         except OSError as err:
-            data = err.response.json()
-            raise ValueError(f"{data.get('error', '')}: {data.get('error_description', '')}")
+            data = err.response.json()  # type: ignore
+            raise ValueError(f"{data.get('error', '')}: {data.get('error_description', '')}") from err
 
         self.access_token = data.get("access_token", "")
         expires_in = data.get("expires_in", None)
