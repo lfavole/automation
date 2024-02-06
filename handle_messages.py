@@ -33,7 +33,7 @@ def handle_new_message(message_id: str, content_callback: Callable[[], bytes]):
     print("Task created")
 
 
-def handle_deleted_message(message_id: str, content_callback: Callable[[], bytes]):
+def handle_deleted_message(message_id: str):
     """
     Handle a deleted message.
     """

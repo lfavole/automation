@@ -57,7 +57,7 @@ def handle_message_list(provider: str, messages: list[tuple[str | None, Callable
     for message_id in old_message_ids:
         if message_id not in messages_dict:
             print(f"Deleted message: {message_id}")
-            handle_deleted_message(message_id, messages_dict[message_id])  # FIXME deleted messages don't exist
+            handle_deleted_message(message_id)
             old_message_ids.remove(message_id)
 
     # save the message IDs
