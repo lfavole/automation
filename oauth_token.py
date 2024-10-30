@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import os
 from pathlib import Path
 
 import custom_requests
@@ -45,9 +46,15 @@ class Token:
     def from_file(cls, provider: str):
         """Get the token from its file. If it doesn't exist, raise an error."""
         file = Path(__file__).parent / f"{provider}_token.json"
-        if not file.exists():
-            raise RuntimeError(f"Can't find {provider} token")
-        data = json.loads(file.read_text())
+        if file.exists():
+            data = json.loads(file.read_text())
+        else:
+            data = {}
+            data["access_token"] = os.getenv(f"{provider.upper()}_TOKEN") or ""
+            data["refresh_token"] = os.getenv(f"{provider.upper()}_REFRESH_TOKEN") or ""
+            data["expires_at"] = None
+            if not data["access_token"] and not data["refresh_token"]:
+                raise RuntimeError(f"Can't find {provider} token")
         return cls(data["access_token"], data["refresh_token"], data["expires_at"], provider=provider)
 
     def _ensure_valid(self):
