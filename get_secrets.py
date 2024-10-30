@@ -22,6 +22,9 @@ def get_secret(name: str, default: str) -> str:
 
 
 def get_secret(name: str, default=NOT_PROVIDED):
+    """
+    Returns a secret from environment variables or secrets.json file.
+    """
     ret = os.getenv(name)
     if ret is not None:
         return ret

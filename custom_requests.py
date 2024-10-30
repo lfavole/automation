@@ -1,15 +1,20 @@
 import json
+import typing
 from dataclasses import dataclass
-from functools import cache
-from typing import Mapping, MutableMapping
+from typing import Mapping, MutableMapping, Optional
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from oauth_token import Token
+if typing.TYPE_CHECKING:
+    from oauth_token import Token
 
 
 class CaseInsensitiveDict(MutableMapping[str, str]):
+    """
+    Dict that doesn't matter about the case of the keys.
+    """
+
     def __init__(self, data=None, **kwargs):
         self._store = {}
         if data is None:
@@ -31,9 +36,15 @@ class CaseInsensitiveDict(MutableMapping[str, str]):
         return (casedkey for casedkey, mappedvalue in self._store.values())
 
     def __len__(self):
+        """
+        Length of the dict.
+        """
         return len(self._store)
 
     def lower_items(self):
+        """
+        The dict items with lowercased keys.
+        """
         return ((lowerkey, keyval[1]) for (lowerkey, keyval) in self._store.items())
 
     def __eq__(self, other):
@@ -53,26 +64,49 @@ class CaseInsensitiveDict(MutableMapping[str, str]):
 
 @dataclass(unsafe_hash=True)
 class Response:
+    """
+    The response of a request.
+    """
+
     content: bytes
     status_code: int
     headers: CaseInsensitiveDict
     _text = None
+    _json = None
 
     @property
     def text(self):
+        """
+        Text content of the response.
+        """
         if self._text is None:
             self._text = self.content.decode()
         return self._text
 
-    @cache
     def json(self):
-        return json.loads(self.text)
+        """
+        Returns the JSON-encoded content of the response.
+        """
+        if self._json is None:
+            self._json = json.loads(self.text)
+        return self._json
 
 
 dumps = json.dumps
 
 
-def request(method, url, params=None, data=None, headers=None, token: Token | None = None, json=None):
+def request(
+    method,
+    url,
+    params=None,
+    data=None,
+    headers=None,
+    token: Optional["Token"] = None,
+    json=None,  # pylint: disable=W0621
+):
+    """
+    Makes a request.
+    """
     if method == "GET" and data:
         params = data
         data = None
@@ -98,35 +132,42 @@ def request(method, url, params=None, data=None, headers=None, token: Token | No
 
 
 def get(*args, **kwargs):
+    """
+    Makes a GET request.
+    """
     return request("GET", *args, **kwargs)
 
 
 def post(*args, **kwargs):
+    """
+    Makes a POST request.
+    """
     return request("POST", *args, **kwargs)
 
 
-def get_with_pages(*args, params=None, **kwargs):
+def get_with_pages(url, params=None, *args, **kwargs):
+    """
+    Returns paginated data from a Google API.
+    """
     if params is None:
         params = {}
 
-    items = []
     next_page_token = None
     while True:
         data = get(
-            *args,
+            url,
             params={
                 **params,
                 **({"pageToken": next_page_token} if next_page_token else {}),
             },
+            *args,
             **kwargs,
         ).json()
 
         for value in data.values():
             if isinstance(value, list):
-                items.extend(value)
+                yield from value
 
         next_page_token = data.get("nextPageToken")
         if next_page_token is None:
             break
-
-    return items

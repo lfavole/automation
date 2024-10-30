@@ -1,13 +1,12 @@
 import base64
-from typing import Callable
 
 import custom_requests
-from email_utils import handle_message_list
+from email_utils import Message, handle_message_list
 from oauth_token import Token
 
 token = Token.from_file("google")
 
-message_ids = [
+message_ids = (
     message["id"]
     for message in custom_requests.get_with_pages(
         "https://gmail.googleapis.com/gmail/v1/users/me/messages",
@@ -17,7 +16,7 @@ message_ids = [
         },
         token=token,
     )
-]
+)
 
 
 def get_content(message_id: str) -> bytes:
@@ -31,11 +30,4 @@ def get_content(message_id: str) -> bytes:
     return base64.urlsafe_b64decode(data["raw"])
 
 
-def defer_get_content(message_id: str) -> Callable[[], bytes]:
-    """
-    Returns a deferred callable that returns the message content.
-    """
-    return lambda: get_content(message_id)
-
-
-handle_message_list("gmail", [(message_id, defer_get_content(message_id)) for message_id in message_ids])
+handle_message_list("gmail", ((message_id, Message.from_bytes(get_content(message_id))) for message_id in message_ids))

@@ -1,39 +1,28 @@
 import datetime as dt
-import email.header
-import email.message
-import email.policy
-import email.utils
-from typing import Callable
 
-import custom_requests
-from email_utils import get_body
-from tasks import add_task
+from email_utils import Message
+from tasks import Task
 
 
-def handle_new_message(message_id: str, content_callback: Callable[[], bytes]):
-    """
-    Handle a new message.
-    """
-    msg = email.message_from_bytes(content_callback(), policy=email.policy.default)
-    headers = custom_requests.CaseInsensitiveDict(msg)
+def handle_new_message(msg: Message):
+    """Handle a new message."""
+    due_date = msg.date + dt.timedelta(days=7)
 
-    date: dt.datetime = email.utils.parsedate_to_datetime(headers["Received"].split(";")[-1].strip()).astimezone()
-    due_date = date + dt.timedelta(days=7)
-    sender = headers["From"]
-    subject = headers["Subject"]
+    notes_end = f"\n\nID : {msg.id}"
 
-    notes_end = f"\n\nID : {message_id}"
-
-    body = get_body(msg)
-    add_task(
-        f"Répondre à {sender}",
-        f"{subject}\n\n{body}"[: 8192 - len(notes_end)] + notes_end,
+    Task(
+        "",
+        f"Répondre à {msg.sender}",
+        f"{msg.subject}\n\n{msg.body}"[: 16383 - len(notes_end)] + notes_end,
         due_date,
-    )
+    ).add()
     print("Task created")
 
 
 def handle_deleted_message(message_id: str):
-    """
-    Handle a deleted message.
-    """
+    """Handle a deleted message."""
+    tasks = Task.get_all()
+    for task in tasks:
+        if message_id in task.description:
+            task.close()
+            print("Task closed")

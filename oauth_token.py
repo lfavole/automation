@@ -7,10 +7,9 @@ from get_secrets import get_secret
 
 
 class Token:
-    """
-    An OAuth2 access/refresh token to access a service.
-    """
-    def __init__(self, access_token="", refresh_token="", expires_at="", *, provider):
+    """An OAuth2 access/refresh token to access a service."""
+
+    def __init__(self, access_token="", refresh_token="", expires_at="", *, provider: str):
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.provider = provider
@@ -23,19 +22,15 @@ class Token:
         else:
             self.expires_at = None
 
-        self.ensure_valid()
+        self._ensure_valid()
 
     @property
     def file(self):
-        """
-        File containing the token.
-        """
+        """The file containing the token."""
         return Path(__file__).parent / f"{self.provider}_token.json"
 
     def save(self):
-        """
-        Save the token to its file.
-        """
+        """Save the token to its file."""
         self.file.write_text(
             json.dumps(
                 {
@@ -47,20 +42,16 @@ class Token:
         )
 
     @classmethod
-    def from_file(cls, provider):
-        """
-        Gets the token from its file. If it doesn't exist, raise an error.
-        """
+    def from_file(cls, provider: str):
+        """Get the token from its file. If it doesn't exist, raise an error."""
         file = Path(__file__).parent / f"{provider}_token.json"
         if not file.exists():
             raise RuntimeError(f"Can't find {provider} token")
         data = json.loads(file.read_text())
         return cls(data["access_token"], data["refresh_token"], data["expires_at"], provider=provider)
 
-    def ensure_valid(self):
-        """
-        Ensure the token is valid. This is called automatically during initialization.
-        """
+    def _ensure_valid(self):
+        """Ensure the token is valid by refreshing it if needed."""
         if self.provider == "google" and self.expires_at and dt.datetime.now() > self.expires_at:
             try:
                 data = custom_requests.get(
@@ -87,7 +78,7 @@ class Token:
         try:
             data = custom_requests.post(token_refresh_url, params).json()
         except OSError as err:
-            data = err.response.json()  # type: ignore
+            data: dict = err.response.json()  # type: ignore
             raise ValueError(f"{data.get('error', '')}: {data.get('error_description', '')}") from err
 
         self.access_token = data.get("access_token", "")

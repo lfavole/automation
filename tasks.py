@@ -1,38 +1,54 @@
 import datetime as dt
-from functools import cache
+from dataclasses import dataclass
+from typing import Self
 
 import custom_requests
 from oauth_token import Token
 
-token = Token.from_file("google")
-token.ensure_valid()  # type: ignore
+token = Token.from_file("todoist")
 
 
-@cache
-def get_main_list_id():
-    data = custom_requests.get_with_pages("https://tasks.googleapis.com/tasks/v1/users/@me/lists", token=token)
+@dataclass
+class Task:
+    """A Todoist task."""
 
-    for task_list in data:
-        if task_list["title"] == "Mes tâches":
-            return task_list["id"]
+    id: str
+    title: str
+    description: str
+    due: dt.datetime
 
-    raise ValueError("Can't get main list ID")
+    @classmethod
+    def from_todoist(cls, data) -> Self:
+        """Create a `Task` from the data provided by Todoist."""
+        return cls(data["id"], data["content"], data["description"], dt.datetime.fromisoformat(data["due"]["datetime"]))
 
+    @classmethod
+    def get_all(cls):
+        """Return the list of all tasks."""
+        return (
+            cls.from_todoist(data)
+            for data in custom_requests.get(
+                "https://api.todoist.com/rest/v2/tasks",
+                token=token,
+            ).json()
+        )
 
-def add_task(title, notes="", due: dt.date | dt.datetime | None = None, list_id=None):
-    list_id = list_id or get_main_list_id()
+    def add(self):
+        """Add the current task to the default list."""
+        data = custom_requests.post(
+            "https://api.todoist.com/rest/v2/tasks",
+            json={
+                "content": self.title,
+                "description": self.description,
+                "due_datetime": str(self.due),
+            },
+            token=token,
+        ).json()
+        self.id = data["id"]
 
-    post_data = {
-        "title": title,
-        "notes": notes[:8192],
-    }
-    if due:
-        post_data["due"] = f"{due.date() if isinstance(due, dt.datetime) else due}T00:00:00Z"
-    print(post_data)
-
-    data = custom_requests.post(
-        f"https://tasks.googleapis.com/tasks/v1/lists/{list_id}/tasks",
-        json=post_data,
-        token=token,
-    ).json()
-    return data["id"]
+    def close(self):
+        """Close the current task."""
+        custom_requests.post(
+            f"https://api.todoist.com/rest/v2/tasks/{self.id}/close",
+            token=token,
+        )
