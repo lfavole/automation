@@ -22,4 +22,5 @@ def get_messages() -> Iterable[Message]:
         conn.logout()
 
 
-handle_message_list("gmx", ((message.id, message) for message in get_messages()))
+def check_gmx_emails():
+    handle_message_list("gmx", ((message.id, message) for message in get_messages()))

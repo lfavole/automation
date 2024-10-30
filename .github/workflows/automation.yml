@@ -25,23 +25,13 @@ jobs:
       TODOIST_CLIENT_SECRET: ${{ secrets.TODOIST_CLIENT_SECRET }}
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
         python-version: 3.12
 
-    - name: Cache data
-      uses: actions/cache@v4
-      with:
-        path: |
-          gmail_messages.json
-          gmx_messages.json
-        key: ${{ github.sha }}
-
-    - name: Check Gmail emails
-      run: python check_gmail_emails.py
-
-    - name: Check GMX emails
-      run: python check_gmx_emails.py
+    - name: Check emails
+      run: python main.py
