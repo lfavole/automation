@@ -12,6 +12,7 @@ from functools import cached_property
 from html.parser import HTMLParser
 from io import StringIO
 from typing import Self
+from zoneinfo import ZoneInfo
 
 import custom_requests
 
@@ -32,7 +33,9 @@ class Message:
         msg = email.message_from_bytes(data, policy=email.policy.default)
         headers = custom_requests.CaseInsensitiveDict(msg)
 
-        date: dt.datetime = email.utils.parsedate_to_datetime(headers["Received"].split(";")[-1].strip()).astimezone()
+        date: dt.datetime = email.utils.parsedate_to_datetime(headers["Received"].split(";")[-1].strip()).astimezone(
+            ZoneInfo("Europe/Paris")
+        )
         sender = headers["From"]
         subject = headers["Subject"]
         body = get_body(msg)
