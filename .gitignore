@@ -1,3 +1,4 @@
 *.pyc
 .env
 *_token.json
+todoist_status_*.json

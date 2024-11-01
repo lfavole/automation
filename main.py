@@ -2,29 +2,32 @@
 
 import datetime as dt
 import re
+from itertools import chain
 from typing import Iterable
 
 from check_gmail_emails import get_gmail_emails
 from check_gmx_emails import get_gmx_emails
 from email_utils import Message
-from tasks import Comment, Task
+from todoist import Comment, SyncStatus, Task
 
-tasks = None
+status: SyncStatus | None = None
 
 
-def handle_message_list(provider: str, messages: Iterable[Message]):
+def handle_message_list(messages: Iterable[Message]):
     """
     Compare a message list with the message IDs stored on disk and call the
     `handle_new_message` and `handle_deleted_message` functions.
     """
-    global tasks
+    global status
 
-    # Get the tasks list
-    if tasks is None:
-        tasks = Task.all()
+    if status is None:
+        status = SyncStatus(["items", "notes"])
+
+    tasks = Task.all(status)
 
     # New messages
     for message in messages:
+        print(f"Message: {message.hashed_id}")
         # The ID of an already created task about this message
         old_task_id = None
         for task in tasks:
@@ -32,15 +35,17 @@ def handle_message_list(provider: str, messages: Iterable[Message]):
                 if message.hashed_id in comment.content:
                     if old_task_id is None:
                         # If it's the first task we see, save its ID to edit it
+                        print("    Task found")
                         old_task_id = task.id
                     else:
                         # Otherwise, delete the task because it's a duplicate
                         task.delete()
+                        # Keep our list in sync with Todoist
                         tasks.remove(task)
-                        print("Duplicate task deleted")
+                        print("    Duplicate task deleted")
 
         if old_task_id is None:
-            print(f"New {provider} message: {message.hashed_id}")
+            print("    New message")
 
         # Set the due date 7 days after the received date
         # If we received the message after 19:00, add one more day
@@ -51,24 +56,27 @@ def handle_message_list(provider: str, messages: Iterable[Message]):
 
         # If it's a new message, add it to the tasks list, otherwise update the already existing task
         task = Task(
-            old_task_id,
             f"Répondre à {message.sender}",
             f"{message.subject}\n\n{message.body}"[:16383],
             due_date,
+            status=status,
+            _id=old_task_id,
         )
         task.save()
         tasks.append(task)
 
         if not old_task_id:
-            Comment(None, task.id, f"ID : {message.hashed_id}").save()  # type: ignore
-            print("Task created")
+            Comment(task, f"ID : {message.hashed_id}", status=status).save()
+            print("    Task created")
         else:
             for comment in task.get_all_comments():
                 if message.hashed_id in comment.content:
                     break
             else:
-                Comment(None, task.id, f"ID : {message.hashed_id}").save()  # type: ignore
-            print("Task updated")
+                Comment(task, f"ID : {message.hashed_id}", status=status).save()
+            print("    Task updated")
+
+        print()
 
     # Deleted messages
 
@@ -96,10 +104,12 @@ def handle_message_list(provider: str, messages: Iterable[Message]):
             else:
                 # Otherwise, delete it
                 task.delete()
+                # Keep our list in sync with Todoist
                 tasks.remove(task)
                 print("Duplicate task deleted")
 
+    status.sync()
+
 
 if __name__ == "__main__":
-    handle_message_list("gmail", get_gmail_emails())
-    handle_message_list("gmx", get_gmx_emails())
+    handle_message_list(chain(get_gmail_emails(), get_gmx_emails()))

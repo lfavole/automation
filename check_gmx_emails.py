@@ -18,7 +18,7 @@ def get_gmx_emails() -> Iterable[Message]:
             typ, data = conn.fetch(num, "(RFC822)")
             if typ != "OK":
                 raise RuntimeError(f"Error getting message {num}")
-            yield Message.from_bytes(data[0][1])  # type: ignore
+            yield Message.from_bytes(data[0][1], "gmx")  # type: ignore
     finally:
         conn.close()
         conn.logout()

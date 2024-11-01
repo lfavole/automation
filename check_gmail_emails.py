@@ -33,4 +33,4 @@ def get_gmail_emails():
     )
 
     for message_id in message_ids:
-        yield Message.from_bytes(get_content(message_id))
+        yield Message.from_bytes(get_content(message_id), "gmail")

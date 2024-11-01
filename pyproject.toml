@@ -38,7 +38,7 @@ disable = [
 include-naming-hint = "y"
 
 [tool.pylint.basic]
-allowed-redefined-builtins = "id"
+allowed-redefined-builtins = "id,hash"
 good-names = ["f", "i", "id"]
 no-docstring-rgx = "^(main|__.*__)$"
 

@@ -26,9 +26,10 @@ class Message:
     subject: str
     date: dt.datetime
     body: str
+    platform: str
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> Self:
+    def from_bytes(cls, data: bytes, platform: str) -> Self:
         """Create a `Message` from its bytes representation."""
         msg = email.message_from_bytes(data, policy=email.policy.default)
         headers = custom_requests.CaseInsensitiveDict(msg)
@@ -40,12 +41,12 @@ class Message:
         subject = headers["Subject"]
         body = get_body(msg)
 
-        return cls(headers["Message-ID"], sender, subject, date, body)
+        return cls(headers["Message-ID"], sender, subject, date, body, platform)
 
     @cached_property
     def hashed_id(self):
         """A short representation of a message ID."""
-        return base64.b64encode(hashlib.md5(self.id.strip("<>").encode()).digest())[:16].decode()
+        return self.platform + "_" + base64.b64encode(hashlib.md5(self.id.strip("<>").encode()).digest())[:16].decode()
 
 
 class TagsStripper(HTMLParser):
