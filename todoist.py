@@ -6,12 +6,25 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Iterable, Self
 
 import custom_requests
 from oauth_token import Token
 
 token = Token.from_file("todoist")
+
+
+def to_json(data):
+    """Return the compact JSON representation of an object."""
+    if isinstance(data, Iterable) and not isinstance(data, dict):
+        data = list(data)
+    return json.dumps(data, separators=(",", ":"))
+
+
+# https://developer.todoist.com/sync/v9/#payload-size
+MAX_SIZE = 1_048_576
+# https://developer.todoist.com/sync/v9/#maximum-sync-commands
+MAX_COMMANDS = 100
 
 
 @dataclass
@@ -35,12 +48,12 @@ class SyncStatus:
 
     def sync(self):
         """Sync the changes with the Todoist API."""
-        data = custom_requests.get(
+        data = custom_requests.post(
             "https://api.todoist.com/sync/v9/sync",
-            params={
+            data={
                 "sync_token": self.data["sync_token"],
-                "resource_types": json.dumps(self.resource_types),
-                "commands": json.dumps(list(self.commands.values())),
+                "resource_types": to_json(self.resource_types),
+                "commands": to_json(self.commands.values()),
             },
             token=token,
         ).json()
@@ -75,7 +88,7 @@ class SyncStatus:
         del self.data["sync_status"]
         del self.data["temp_id_mapping"]
 
-        self.file.write_text(json.dumps(self.data))
+        self.file.write_text(to_json(self.data))
 
         for id, value in sync_status.items():
             if value == "ok":
@@ -87,7 +100,7 @@ class SyncStatus:
         # Generate an temporary ID by accessing the property; if the object has one, save it
         if obj.temp_id:
             self.temp_ids[obj.temp_id] = obj
-        self.commands[obj.id] = {
+        to_add = {
             "type": obj_type,
             **({"temp_id": obj.temp_id} if obj.temp_id else {}),
             "uuid": str(uuid.uuid4()),
@@ -96,6 +109,14 @@ class SyncStatus:
                 **(args or {}),
             },
         }
+        # If this object exceeds the maximum size, raise an error
+        len_to_add = len(to_json(to_add)) + (1 if self.commands else 2)  # length of the comma or brackets
+        if len_to_add > MAX_SIZE:
+            raise ValueError("Payload too big")
+        # If all the commands will exceed the maximum size or if there are too many commands, sync now
+        if len(to_json(self.commands.values())) + len_to_add >= MAX_SIZE or len(self.commands) >= MAX_COMMANDS:
+            self.sync()
+        self.commands[obj.id] = to_add
 
 
 # https://stackoverflow.com/a/72715549
