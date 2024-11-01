@@ -33,12 +33,18 @@ jobs:
       with:
         python-version: 3.12
 
-    - name: Cache the Todoist status
-      uses: actions/cache@v4
+    - name: Restore the Todoist status
+      uses: actions/cache/restore@v4
       with:
         path: todoist_status_*.json
-        key: todoist-status-${{ github.sha }}
+        key: todoist-status-${{ hashFiles('todoist_status_*.json') }}
         restore-keys: todoist-status-
 
     - name: Check emails
       run: python main.py
+
+    - name: Cache the Todoist status
+      uses: actions/cache/save@v4
+      with:
+        path: todoist_status_*.json
+        key: todoist-status-${{ hashFiles('todoist_status_*.json') }}
