@@ -1,15 +1,17 @@
+"""Functions to get emails from GMX."""
+
 import imaplib
 from typing import Iterable
 
-from email_utils import Message, handle_message_list
-from get_secrets import get_secret
+from email_utils import Message
+from get_secrets import secrets
 
 
-def get_messages() -> Iterable[Message]:
+def get_gmx_emails() -> Iterable[Message]:
     """Yield all messages on GMX."""
     conn = imaplib.IMAP4_SSL("imap.gmx.com")
     try:
-        conn.login(get_secret("GMX_USER"), get_secret("GMX_PASSWORD"))
+        conn.login(secrets["GMX_USER"], secrets["GMX_PASSWORD"])
         conn.select(readonly=True)
         _, data = conn.search(None, "(ALL)")
         for num in data[0].split():
@@ -20,7 +22,3 @@ def get_messages() -> Iterable[Message]:
     finally:
         conn.close()
         conn.logout()
-
-
-def check_gmx_emails():
-    handle_message_list("gmx", ((message.id, message) for message in get_messages()))

@@ -1,10 +1,11 @@
+"""Utility functions to manage OAuth access/refresh tokens."""
+
 import datetime as dt
 import json
-import os
 from pathlib import Path
 
 import custom_requests
-from get_secrets import get_secret
+from get_secrets import secrets
 
 
 class Token:
@@ -19,7 +20,8 @@ class Token:
             try:
                 self.expires_at = dt.datetime.fromisoformat(expires_at)
             except (TypeError, ValueError):
-                self.expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_at))  # expires_in
+                # The value is a number of seconds (= expire_in), so add it to the current date
+                self.expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_at))
         else:
             self.expires_at = None
 
@@ -31,7 +33,11 @@ class Token:
         return Path(__file__).parent / f"{self.provider}_token.json"
 
     def save(self):
-        """Save the token to its file."""
+        """Save the token to its file and the .env file."""
+        if self.provider == "google":
+            secrets[f"{self.provider.upper()}_REFRESH_TOKEN"] = self.refresh_token
+        if self.provider == "todoist":
+            secrets[f"{self.provider.upper()}_TOKEN"] = self.access_token
         self.file.write_text(
             json.dumps(
                 {
@@ -50,44 +56,53 @@ class Token:
             data = json.loads(file.read_text())
         else:
             data = {}
-            data["access_token"] = os.getenv(f"{provider.upper()}_TOKEN") or ""
-            data["refresh_token"] = os.getenv(f"{provider.upper()}_REFRESH_TOKEN") or ""
-            data["expires_at"] = None
-            if not data["access_token"] and not data["refresh_token"]:
-                raise RuntimeError(f"Can't find {provider} token")
+        data.setdefault("access_token", secrets.get(f"{provider.upper()}_TOKEN", ""))
+        data.setdefault("refresh_token", secrets.get(f"{provider.upper()}_REFRESH_TOKEN", ""))
+        data.setdefault("expires_at", None)
+        if not data["access_token"] and not data["refresh_token"]:
+            raise RuntimeError(f"Can't find {provider} token")
         return cls(data["access_token"], data["refresh_token"], data["expires_at"], provider=provider)
 
     def _ensure_valid(self):
         """Ensure the token is valid by refreshing it if needed."""
+        # If the Google token is expired, check if it is still valid
         if self.provider == "google" and self.expires_at and dt.datetime.now() > self.expires_at:
             try:
                 data = custom_requests.get(
                     "https://oauth2.googleapis.com/tokeninfo", {"access_token": self.access_token}
                 ).json()
+                # If the token is valid, stop here
                 return
             except OSError:
                 pass
 
+        # Try to refresh the token
         token_refresh_url = {
             "google": "https://oauth2.googleapis.com/token",
         }.get(self.provider)
         params = {
             "google": {
-                "client_id": get_secret(self.provider.upper() + "_CLIENT_ID"),
-                "client_secret": get_secret(self.provider.upper() + "_CLIENT_SECRET"),
+                "client_id": secrets[f"{self.provider.upper()}_CLIENT_ID"],
+                "client_secret": secrets[f"{self.provider.upper()}_CLIENT_SECRET"],
                 "refresh_token": self.refresh_token,
                 "grant_type": "refresh_token",
             }
         }.get(self.provider)
+        # If there is nothing to do, stop here
         if not token_refresh_url or not params:
             return
 
         try:
             data = custom_requests.post(token_refresh_url, params).json()
         except OSError as err:
+            if not hasattr(err, "response"):
+                raise
             data: dict = err.response.json()  # type: ignore
-            raise ValueError(f"{data.get('error', '')}: {data.get('error_description', '')}") from err
+            raise ValueError(
+                f"Error while refreshing the token: {data.get('error', '')}: {data.get('error_description', '')}"
+            ) from err
 
+        # Save the new access token
         self.access_token = data.get("access_token", "")
         expires_in = data.get("expires_in", None)
         if expires_in:

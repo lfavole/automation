@@ -1,5 +1,3 @@
 *.pyc
-gmx_messages.json
-gmail_messages.json
-secrets.json
+.env
 *_token.json

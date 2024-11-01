@@ -1,16 +1,16 @@
+"""Functions to get emails from Gmail."""
+
 import base64
 
 import custom_requests
-from email_utils import Message, handle_message_list
+from email_utils import Message
 from oauth_token import Token
 
 token = Token.from_file("google")
 
 
 def get_content(message_id: str) -> bytes:
-    """
-    Gets the content of a message with ID via the Gmail API.
-    """
+    """Get the content of a message from the ID given by the Gmail API."""
     data = custom_requests.get(
         f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}?format=raw",
         token=token,
@@ -18,7 +18,8 @@ def get_content(message_id: str) -> bytes:
     return base64.urlsafe_b64decode(data["raw"])
 
 
-def check_gmail_emails():
+def get_gmail_emails():
+    """Return all the emails in the Gmail inbox."""
     message_ids = (
         message["id"]
         for message in custom_requests.get_with_pages(
@@ -31,6 +32,5 @@ def check_gmail_emails():
         )
     )
 
-    handle_message_list(
-        "gmail", ((message_id, Message.from_bytes(get_content(message_id), message_id)) for message_id in message_ids)
-    )
+    for message_id in message_ids:
+        yield Message.from_bytes(get_content(message_id))

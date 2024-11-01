@@ -1,10 +1,21 @@
+"""
+A Flask app that can be used to get Google or Todoist access/refresh tokens.
+
+To use this app, you must:
+1. Install Flask (`pip install flask`).
+2. Register a Google app and a Todoist app and pass the
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TODOIST_CLIENT_ID` and `TODOIST_CLIENT_SECRET`
+   environment variables or create a `.env` file with these variables.
+"""
+
 import uuid
-from urllib.parse import unquote, urlencode
+from html import escape
+from urllib.parse import urlencode
 
 from flask import Flask, Response, abort, redirect, request, session
 
 import custom_requests
-from get_secrets import get_secret
+from get_secrets import secrets
 from oauth_token import Token
 
 app = Flask(__name__)
@@ -12,9 +23,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    """
-    Home page.
-    """
+    """Home page."""
     return """\
 <ul>
     <li><a href="/google">Google</a></li>
@@ -25,46 +34,37 @@ def index():
 
 @app.route("/favicon.ico")
 def favicon():
-    """
-    Favicon page that responds with a 404 error.
-    """
+    """Favicon page that returns a 404 error."""
     abort(404)
 
 
 @app.route("/<provider>")
 def provider_oauth(provider):
-    """
-    OAuth page for a provider.
-    """
-    # get the settings
-    client_id = get_secret(provider.upper() + "_CLIENT_ID")
-    client_secret = get_secret(provider.upper() + "_CLIENT_SECRET")
-
+    """OAuth page for a provider."""
+    # Get the settings
+    client_id = secrets[f"{provider.upper()}_CLIENT_ID"]
+    client_secret = secrets[f"{provider.upper()}_CLIENT_SECRET"]
     redirect_uri = "http://127.0.0.1:5000/" + provider
 
-    params = {
-        unquote(key): unquote(value)
-        for key, _, value in (part.partition(b"=") for part in request.query_string.split(b"&"))
-    }
+    # If there is an error from the provider, show it
+    if "error" in request.args:
+        return Response(f"Error: {request.args['error']}", content_type="text/plain")
 
-    # if there is an error, show it
-    if "error" in params:
-        return Response(f"Error: {params['error']}", content_type="text/plain")
-
-    # if we have the access code, get an access token and a refresh token
-    if "code" in params:
-        access_token_method = {}.get(provider, "POST")
+    # If we have the access code, get an access token and a refresh token
+    if "code" in request.args:
         access_token_url = {
             "google": "https://oauth2.googleapis.com/token",
             "todoist": "https://todoist.com/oauth/access_token",
         }[provider]
 
+        # Check the Todoist state
         if provider == "todoist":
             state = session["TODOIST_STATE"]
-            if state != params["state"]:
+            if state != request.args["state"]:
                 return "State mismatch"
 
-        code = params["code"]
+        # Get the access token
+        code = request.args["code"]
         get_access_token_data = {
             "google": {
                 "grant_type": "authorization_code",
@@ -72,8 +72,7 @@ def provider_oauth(provider):
             },
         }.get(provider, {})
 
-        req = custom_requests.request(
-            access_token_method,
+        req = custom_requests.get(
             access_token_url,
             data={
                 "client_id": client_id,
@@ -83,43 +82,46 @@ def provider_oauth(provider):
             },
         )
         data = req.json()
+        # Create the token object and save it
         token = Token(
-            data["access_token"], data.get("refresh_token", ""), data.get("expires_in", ""), provider=provider
+            data["access_token"],
+            data.get("refresh_token", ""),
+            data.get("expires_in", ""),
+            provider=provider,
         )
         token.save()
-        session[provider] = True
+        # Redirect to the provider page to hide the URL query string
         return redirect("/" + provider)
 
-    # if we have saved a token, show it
+    # If we have already saved a token, show it
     try:
         token = Token.from_file(provider)
     except RuntimeError:
         pass
     else:
-        return Response(
-            f"""\
-Access token: {token.access_token}
+        return f"""\
+<a href="/">← Back</a>
+<ul>
+    <li>Access token: <input disabled value="{escape(token.access_token)}"></li>
+    <li>Refresh token: <input disabled value="{escape(token.refresh_token)}"></li>
+    <li>Expires at: {escape(str(token.expires_at))}</li>
+</li>
+"""
 
-Refresh token: {token.refresh_token}
-
-Expires at: {token.expires_at}
-""",
-            content_type="text/plain",
-        )
-
-    # otherwise, redirect to the service
+    # Otherwise, redirect to the service
     url = {
         "google": "https://accounts.google.com/o/oauth2/v2/auth",
         "todoist": "https://todoist.com/oauth/authorize",
     }[provider]
 
+    # Create the Todoist state
     if "TODOIST_STATE" not in session:
         session["TODOIST_STATE"] = str(uuid.uuid4())
         session.modified = True
 
     params = {
         "google": {
-            "scope": "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/gmail.readonly",
+            "scope": "https://www.googleapis.com/auth/gmail.readonly",
             "access_type": "offline",
             "response_type": "code",
             "redirect_uri": redirect_uri,
@@ -133,7 +135,7 @@ Expires at: {token.expires_at}
         },
     }[provider]
 
-    return redirect(url + "?" + urlencode(params))
+    return app.redirect(url + "?" + urlencode(params))
 
 
 if __name__ == "__main__":

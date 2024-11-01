@@ -1,3 +1,5 @@
+"""A tiny implementation of the core functionalities of the `requests` library."""
+
 import json
 import typing
 from dataclasses import dataclass
@@ -11,9 +13,7 @@ if typing.TYPE_CHECKING:
 
 
 class CaseInsensitiveDict(MutableMapping[str, str]):
-    """
-    Dict that doesn't matter about the case of the keys.
-    """
+    """Dict that doesn't matter about the case of the keys."""
 
     def __init__(self, data=None, **kwargs):
         self._store = {}
@@ -22,8 +22,7 @@ class CaseInsensitiveDict(MutableMapping[str, str]):
         self.update(data, **kwargs)
 
     def __setitem__(self, key, value):
-        # Use the lowercased key for lookups, but store the actual
-        # key alongside the value.
+        # Use the lowercased key for lookups, but store the actual key alongside the value.
         self._store[key.lower()] = (key, value)
 
     def __getitem__(self, key):
@@ -33,18 +32,14 @@ class CaseInsensitiveDict(MutableMapping[str, str]):
         del self._store[key.lower()]
 
     def __iter__(self):
-        return (casedkey for casedkey, mappedvalue in self._store.values())
+        return (casedkey for casedkey, _ in self._store.values())
 
     def __len__(self):
-        """
-        Length of the dict.
-        """
+        """Length of the dict."""
         return len(self._store)
 
     def lower_items(self):
-        """
-        The dict items with lowercased keys.
-        """
+        """The dict items with lowercased keys."""
         return ((lowerkey, keyval[1]) for (lowerkey, keyval) in self._store.items())
 
     def __eq__(self, other):
@@ -53,6 +48,7 @@ class CaseInsensitiveDict(MutableMapping[str, str]):
         return NotImplemented
 
     def copy(self):
+        """Return a copy of this dict."""
         return CaseInsensitiveDict(self._store.values())
 
     def __repr__(self):
@@ -64,9 +60,7 @@ class CaseInsensitiveDict(MutableMapping[str, str]):
 
 @dataclass(unsafe_hash=True)
 class Response:
-    """
-    The response of a request.
-    """
+    """The response of a request."""
 
     content: bytes
     status_code: int
@@ -76,22 +70,19 @@ class Response:
 
     @property
     def text(self):
-        """
-        Text content of the response.
-        """
+        """The text content of the response."""
         if self._text is None:
             self._text = self.content.decode()
         return self._text
 
     def json(self):
-        """
-        Returns the JSON-encoded content of the response.
-        """
+        """Return the JSON-encoded content of the response."""
         if self._json is None:
             self._json = json.loads(self.text)
         return self._json
 
 
+# Save a reference to json.dumps for the request function (because json is shadowed by a parameter)
 dumps = json.dumps
 
 
@@ -104,9 +95,8 @@ def request(
     token: Optional["Token"] = None,
     json=None,  # pylint: disable=W0621
 ):
-    """
-    Makes a request.
-    """
+    """Make a request."""
+    # For GET requests, if data is provided, use it instead of params
     if method == "GET" and data:
         params = data
         data = None
@@ -127,28 +117,28 @@ def request(
         with urlopen(req) as resp:
             return Response(resp.read(), resp.code, CaseInsensitiveDict(resp.headers))
     except HTTPError as err:
+        # Attach the response to the error (we might need it)
         err.response = Response(err.fp.read(), err.code, err.headers)  # type: ignore
         raise
 
 
 def get(*args, **kwargs):
-    """
-    Makes a GET request.
-    """
+    """Make a GET request."""
     return request("GET", *args, **kwargs)
 
 
 def post(*args, **kwargs):
-    """
-    Makes a POST request.
-    """
+    """Make a POST request."""
     return request("POST", *args, **kwargs)
 
 
-def get_with_pages(url, params=None, *args, **kwargs):
-    """
-    Returns paginated data from a Google API.
-    """
+def delete(*args, **kwargs):
+    """Make a DELETE request."""
+    return request("DELETE", *args, **kwargs)
+
+
+def get_with_pages(url, params=None, *args, **kwargs):  # pylint: disable=W1113
+    """Return paginated data from a Google API."""
     if params is None:
         params = {}
 

@@ -1,38 +1,31 @@
-import json
-import os
+"""A dict that returns secrets from environment variables or from the `.env` file."""
+
 from pathlib import Path
-from typing import overload
 
 NOT_PROVIDED = object()
 
-secrets_json = Path(__file__).parent / "secrets.json"
-secrets_json_data = {}
-if secrets_json.exists():
-    secrets_json_data = json.loads(secrets_json.read_text())
+
+class Secrets(dict):
+    def __init__(self):
+        self.file = Path(__file__).parent / ".env"
+        data = {}
+        if self.file.exists():
+            with self.file.open() as f:
+                for line in f:
+                    key, _, value = line[:-1].partition("=")
+                    data[key] = value
+        super().__init__(data)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.save()
+
+    def save(self):
+        new_file = self.file.with_name(self.file.name + ".new")
+        with new_file.open("w") as f:
+            for key, value in self.items():
+                f.write(f"{key}={value}\n")
+        new_file.rename(self.file)
 
 
-@overload
-def get_secret(name: str, default=NOT_PROVIDED) -> str:
-    pass
-
-
-@overload
-def get_secret(name: str, default: str) -> str:
-    pass
-
-
-def get_secret(name: str, default=NOT_PROVIDED):
-    """
-    Returns a secret from environment variables or secrets.json file.
-    """
-    ret = os.getenv(name)
-    if ret is not None:
-        return ret
-
-    ret = secrets_json_data.get(name)
-    if ret is not None:
-        return ret
-
-    if default is not NOT_PROVIDED:
-        return default
-    raise ValueError(f"Can't get secret '{name}'")
+secrets = Secrets()
