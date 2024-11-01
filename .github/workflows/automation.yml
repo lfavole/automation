@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
-      TODOIST_TOKEN: ${{ secrets.TODOIST_TOKEN }}
       GMX_USER: ${{ secrets.GMX_USER }}
       GMX_PASSWORD: ${{ secrets.GMX_PASSWORD }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
       TODOIST_CLIENT_ID: ${{ secrets.TODOIST_CLIENT_ID }}
       TODOIST_CLIENT_SECRET: ${{ secrets.TODOIST_CLIENT_SECRET }}
+      TODOIST_TOKEN: ${{ secrets.TODOIST_TOKEN }}
 
     steps:
     - name: Checkout

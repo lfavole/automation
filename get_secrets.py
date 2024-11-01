@@ -1,5 +1,6 @@
 """A dict that returns secrets from environment variables or from the `.env` file."""
 
+import os
 from pathlib import Path
 
 NOT_PROVIDED = object()
@@ -8,7 +9,7 @@ NOT_PROVIDED = object()
 class Secrets(dict):
     def __init__(self):
         self.file = Path(__file__).parent / ".env"
-        data = {}
+        data = os.environ.copy()
         if self.file.exists():
             with self.file.open() as f:
                 for line in f:
