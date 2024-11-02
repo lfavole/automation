@@ -32,10 +32,8 @@ jobs:
       uses: actions/cache/restore@v4
       if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || inputs.restoreCollection }}
       with:
-        path: |
-          message_*
-          todoist_status_*.json
-        key: cache-${{ hashFiles('message_*', 'todoist_status_*.json') }}
+        path: cache/**
+        key: cache-${{ hashFiles('cache/**') }}
         restore-keys: cache-
 
     - name: Check emails
@@ -53,7 +51,5 @@ jobs:
     - name: Cache data
       uses: actions/cache/save@v4
       with:
-        path: |
-          message_*
-          todoist_status_*.json
-        key: cache-${{ hashFiles('message_*', 'todoist_status_*.json') }}
+        path: cache/**
+        key: cache-${{ hashFiles('cache/**') }}

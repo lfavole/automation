@@ -12,7 +12,7 @@ token = Token.from_file("google")
 
 def get_content(message_id: str) -> bytes:
     """Get the content of a message from the ID given by the Gmail API."""
-    file = Path(__file__).parent / f"message_{message_id}"
+    file = Path(__file__).parent / f"cache/message_{message_id}"
     if file.exists():
         return file.read_bytes()
     data = custom_requests.get(
@@ -20,6 +20,7 @@ def get_content(message_id: str) -> bytes:
         token=token,
     ).json()
     ret = base64.urlsafe_b64decode(data["raw"])
+    file.parent.mkdir(parents=True, exist_ok=True)
     file.write_bytes(ret)
     return ret
 

@@ -30,7 +30,7 @@ class Token:
     @property
     def file(self):
         """The file containing the token."""
-        return Path(__file__).parent / f"{self.provider}_token.json"
+        return Path(__file__).parent / f"cache/{self.provider}_token.json"
 
     def save(self):
         """Save the token to its file and the .env file."""
@@ -38,6 +38,7 @@ class Token:
             secrets[f"{self.provider.upper()}_REFRESH_TOKEN"] = self.refresh_token
         if self.provider == "todoist":
             secrets[f"{self.provider.upper()}_TOKEN"] = self.access_token
+        self.file.parent.mkdir(parents=True, exist_ok=True)
         self.file.write_text(
             json.dumps(
                 {
@@ -51,7 +52,7 @@ class Token:
     @classmethod
     def from_file(cls, provider: str):
         """Get the token from its file. If it doesn't exist, raise an error."""
-        file = Path(__file__).parent / f"{provider}_token.json"
+        file = Path(__file__).parent / f"cache/{provider}_token.json"
         if file.exists():
             data = json.loads(file.read_text())
         else:

@@ -39,7 +39,7 @@ class SyncStatus:
     temp_ids: dict[str, "TodoistObject"] = field(init=False, default_factory=dict)
 
     def __post_init__(self):
-        self.file = Path(__file__).parent / f"todoist_status_{'_'.join(self.resource_types)}.json"
+        self.file = Path(__file__).parent / f"cache/todoist_status_{'_'.join(self.resource_types)}.json"
         if self.file.exists():
             self.data = json.loads(self.file.read_text("utf-8"))
         else:
@@ -88,6 +88,7 @@ class SyncStatus:
         del self.data["sync_status"]
         del self.data["temp_id_mapping"]
 
+        self.file.parent.mkdir(parents=True, exist_ok=True)
         self.file.write_text(to_json(self.data))
 
         for id, value in sync_status.items():
