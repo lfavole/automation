@@ -1,6 +1,7 @@
 """Functions to get emails from Gmail."""
 
 import base64
+from pathlib import Path
 
 import custom_requests
 from email_utils import Message
@@ -11,11 +12,16 @@ token = Token.from_file("google")
 
 def get_content(message_id: str) -> bytes:
     """Get the content of a message from the ID given by the Gmail API."""
+    file = Path(__file__).parent / f"message_{message_id}"
+    if file.exists():
+        return file.read_bytes()
     data = custom_requests.get(
         f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}?format=raw",
         token=token,
     ).json()
-    return base64.urlsafe_b64decode(data["raw"])
+    ret = base64.urlsafe_b64decode(data["raw"])
+    file.write_bytes(ret)
+    return ret
 
 
 def get_gmail_emails():
