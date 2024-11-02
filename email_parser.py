@@ -30,7 +30,7 @@ class EmailParser:
         if "List-ID" in message.headers:
             params.update(cls.parse_newsletter(message))
 
-        if "Your SSL certificate" in message.subject:
+        if "Your SSL certificate" in message.subject and "issued" not in message.subject:
             params.update(cls.parse_infinityfree(message))
 
         if "workflow" in message.subject and "disabled" in message.subject:
