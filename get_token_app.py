@@ -72,7 +72,7 @@ def provider_oauth(provider):
             },
         }.get(provider, {})
 
-        req = custom_requests.get(
+        req = custom_requests.post(
             access_token_url,
             data={
                 "client_id": client_id,
