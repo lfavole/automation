@@ -10,18 +10,13 @@ from email_parser import EmailParser
 from email_utils import Message
 from todoist import Comment, SyncStatus, Task
 
-status: SyncStatus | None = None
-
 
 def handle_message_list(messages: Iterable[Message]):
     """
     Compare a message list with the message IDs stored on disk and call the
     `handle_new_message` and `handle_deleted_message` functions.
     """
-    global status
-
-    if status is None:
-        status = SyncStatus(["items", "notes"])
+    status = SyncStatus(["items", "notes"])
 
     tasks = Task.all(status)
 
@@ -31,45 +26,56 @@ def handle_message_list(messages: Iterable[Message]):
     for message in messages:
         print(f"Message: {message.hashed_id}")
         seen_hashed_message_ids.append(message.hashed_id)
-
-        # The ID of an already created task about this message
-        old_task_id = None
-        for task in tasks:
-            for comment in task.get_all_comments():
-                if message.hashed_id in comment.content:
-                    if old_task_id is None:
-                        # If it's the first task we see, save its ID to edit it
-                        print("    Task found")
-                        old_task_id = task.id
-                    else:
-                        # Otherwise, delete the task because it's a duplicate
-                        task.delete()
-                        # Keep our list in sync with Todoist
-                        tasks.remove(task)
-                        print("    Duplicate task deleted")
-
-        if old_task_id is None:
-            print("    New message")
-
-        task = EmailParser.parse_email(message, status)
-        task._id = old_task_id
-        task.save()
-        tasks.append(task)
-
-        if not old_task_id:
-            Comment(task, f"ID : {message.hashed_id}", status=status).save()
-            print("    Task created")
-        else:
-            for comment in task.get_all_comments():
-                if message.hashed_id in comment.content:
-                    break
-            else:
-                Comment(task, f"ID : {message.hashed_id}", status=status).save()
-            print("    Task updated")
-
+        handle_new_message(message, tasks, status)
         print()
 
     # Deleted messages
+    check_deleted_messages(tasks, seen_hashed_message_ids)
+
+    # Send the changes to Todoist
+    status.sync()
+
+
+def handle_new_message(message: Message, tasks: list[Task], status: SyncStatus):
+    """Handle a new message: create a task and remove the duplicate tasks."""
+    # The ID of an already created task about this message
+    old_task_id = None
+    for task in tasks:
+        for comment in task.get_all_comments():
+            if message.hashed_id in comment.content:
+                if old_task_id is None:
+                    # If it's the first task we see, save its ID to edit it
+                    print("    Task found")
+                    old_task_id = task.id
+                else:
+                    # Otherwise, delete the task because it's a duplicate
+                    task.delete()
+                    # Keep our list in sync with Todoist
+                    tasks.remove(task)
+                    print("    Duplicate task deleted")
+
+    if old_task_id is None:
+        print("    New message")
+
+    task = EmailParser.parse_email(message, status)
+    task._id = old_task_id
+    task.save()
+    tasks.append(task)
+
+    if not old_task_id:
+        Comment(task, f"ID : {message.hashed_id}", status=status).save()
+        print("    Task created")
+    else:
+        for comment in task.get_all_comments():
+            if message.hashed_id in comment.content:
+                break
+        else:
+            Comment(task, f"ID : {message.hashed_id}", status=status).save()
+        print("    Task updated")
+
+
+def check_deleted_messages(tasks: list[Task], seen_hashed_message_ids: list[str]):
+    """Check for deleted messages and close or delete the associated tasks."""
 
     # Hashed IDs of messages for which the task has been closed
     closed_tasks_hashed_message_ids: list[str] = []
@@ -98,8 +104,6 @@ def handle_message_list(messages: Iterable[Message]):
                 # Keep our list in sync with Todoist
                 tasks.remove(task)
                 print("Duplicate task deleted")
-
-    status.sync()
 
 
 if __name__ == "__main__":
