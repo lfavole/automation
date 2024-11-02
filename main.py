@@ -25,9 +25,13 @@ def handle_message_list(messages: Iterable[Message]):
 
     tasks = Task.all(status)
 
+    seen_hashed_message_ids: list[str] = []
+
     # New messages
     for message in messages:
         print(f"Message: {message.hashed_id}")
+        seen_hashed_message_ids.append(message.hashed_id)
+
         # The ID of an already created task about this message
         old_task_id = None
         for task in tasks:
@@ -90,8 +94,8 @@ def handle_message_list(messages: Iterable[Message]):
             if not match:
                 continue
             hashed_id = match[1]
-            # If the ID is in the comment's content, stop here
-            if hashed_id in comment.content:
+            # If the ID is in the seen messages, stop here
+            if hashed_id in seen_hashed_message_ids:
                 break
 
             print(f"Deleted message: {hashed_id}")
