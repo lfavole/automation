@@ -57,11 +57,12 @@ def provider_oauth(provider):
             "todoist": "https://todoist.com/oauth/access_token",
         }[provider]
 
-        # Check the Todoist state
-        if provider == "todoist":
-            state = session["TODOIST_STATE"]
-            if state != request.args["state"]:
-                return "State mismatch"
+        # Check the state
+        if f"{provider}_state" not in session:
+            return "State doesn't exist"
+        state = session[f"{provider}_state"]
+        if state != request.args["state"]:
+            return "State mismatch"
 
         # Get the access token
         code = request.args["code"]
@@ -114,9 +115,9 @@ def provider_oauth(provider):
         "todoist": "https://todoist.com/oauth/authorize",
     }[provider]
 
-    # Create the Todoist state
-    if "TODOIST_STATE" not in session:
-        session["TODOIST_STATE"] = str(uuid.uuid4())
+    # Create the state
+    if f"{provider}_state" not in session:
+        session[f"{provider}_state"] = str(uuid.uuid4())
         session.modified = True
 
     params = {
@@ -131,9 +132,9 @@ def provider_oauth(provider):
         "todoist": {
             "client_id": client_id,
             "scope": "data:read_write",
-            "state": session["TODOIST_STATE"],
         },
     }[provider]
+    params["state"] = session[f"{provider}_state"]
 
     return app.redirect(url + "?" + urlencode(params))
 
