@@ -1,12 +1,12 @@
 """The main entry point to run this program."""
 
-import datetime as dt
 import re
 from itertools import chain
 from typing import Iterable
 
 from check_gmail_emails import get_gmail_emails
 from check_gmx_emails import get_gmx_emails
+from email_parser import EmailParser
 from email_utils import Message
 from todoist import Comment, SyncStatus, Task
 
@@ -51,21 +51,8 @@ def handle_message_list(messages: Iterable[Message]):
         if old_task_id is None:
             print("    New message")
 
-        # Set the due date 7 days after the received date
-        # If we received the message after 19:00, add one more day
-        due_date = dt.datetime.combine(
-            message.date.date() + dt.timedelta(days=8 if message.date.hour >= 19 else 7),
-            dt.time(9, 0, 0),
-        )
-
-        # If it's a new message, add it to the tasks list, otherwise update the already existing task
-        task = Task(
-            f"Répondre à {message.sender}",
-            f"{message.subject}\n\n{message.body}"[:16383],
-            due_date,
-            status=status,
-            _id=old_task_id,
-        )
+        task = EmailParser.parse_email(message, status)
+        task._id = old_task_id
         task.save()
         tasks.append(task)
 

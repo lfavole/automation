@@ -25,6 +25,7 @@ class Message:
     sender: str
     subject: str
     date: dt.datetime
+    headers: custom_requests.CaseInsensitiveDict
     body: str
     platform: str
 
@@ -41,7 +42,7 @@ class Message:
         subject = headers["Subject"]
         body = get_body(msg)
 
-        return cls(headers["Message-ID"], sender, subject, date, body, platform)
+        return cls(headers["Message-ID"], sender, subject, date, headers, body, platform)
 
     @cached_property
     def hashed_id(self):

@@ -180,6 +180,7 @@ class Task(TodoistObject):
     title: str
     description: str
     due: dt.datetime | None = None
+    priority: int = 1
 
     object_type = "item"  # type: ignore
 
@@ -189,6 +190,7 @@ class Task(TodoistObject):
             "content": self.title,
             "description": self.description,
             "due": {"date": self.due.isoformat()} if self.due else None,
+            "priority": self.priority,
         }
 
     @classmethod
