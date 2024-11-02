@@ -9,6 +9,11 @@ on:
     # Same thing during DST (UTC+1)
     - cron: '0,30 6-21 * 1-3,11-12 *'
   workflow_dispatch:
+    inputs:
+      restoreCache:
+        description: Restore cache
+        required: false
+        type: boolean
 
 jobs:
   automation:
@@ -25,6 +30,7 @@ jobs:
 
     - name: Restore the cached data
       uses: actions/cache/restore@v4
+      if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || inputs.restoreCollection }}
       with:
         path: |
           message_*
