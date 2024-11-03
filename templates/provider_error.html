@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ provider.name }} error{% endblock title %}
+{% block h1 %}{{ provider.image_tag }}{% endblock h1 %}
+
+{% block body %}
+    <div class="error">
+        <h2>Error</h2>
+        {{ error }}
+    </div>
+    <form method="post" action="/{{ provider.id }}">
+        {% if delete %}
+            <input type="hidden" name="delete" value="1">
+        {% endif %}
+        <input type="submit" value="Retry">
+    </form>
+{% endblock body %}

@@ -1,7 +1,5 @@
 """Utility functions to manage OAuth access/refresh tokens."""
 
-import datetime as dt
-import json
 from pathlib import Path
 
 import custom_requests
@@ -11,69 +9,69 @@ from get_secrets import secrets
 class Token:
     """An OAuth2 access/refresh token to access a service."""
 
-    def __init__(self, access_token="", refresh_token="", expires_at="", *, provider: str):
+    def __init__(self, access_token="", refresh_token="", *, provider: str, ensure_valid=True):
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.provider = provider
 
-        if expires_at:
-            try:
-                self.expires_at = dt.datetime.fromisoformat(expires_at)
-            except (TypeError, ValueError):
-                # The value is a number of seconds (= expire_in), so add it to the current date
-                self.expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_at))
-        else:
-            self.expires_at = None
-
-        self._ensure_valid()
+        if ensure_valid:
+            self._ensure_valid()
 
     @property
     def file(self):
         """The file containing the token."""
-        return Path(__file__).parent / f"cache/{self.provider}_token.json"
+        return self.file_for_provider(self.provider)
+
+    @staticmethod
+    def file_for_provider(provider):
+        return Path(__file__).parent / f"cache/.{provider}_token"
 
     def save(self):
         """Save the token to its file and the .env file."""
         if self.provider == "google":
             secrets[f"{self.provider.upper()}_REFRESH_TOKEN"] = self.refresh_token
+            self.file.parent.mkdir(parents=True, exist_ok=True)
+            self.file.write_text(self.access_token)
+
         if self.provider == "todoist":
             secrets[f"{self.provider.upper()}_TOKEN"] = self.access_token
-        self.file.parent.mkdir(parents=True, exist_ok=True)
-        self.file.write_text(
-            json.dumps(
-                {
-                    "access_token": self.access_token,
-                    "refresh_token": self.refresh_token,
-                    "expires_at": str(self.expires_at) if self.expires_at else None,
-                }
-            )
-        )
 
     @classmethod
-    def from_file(cls, provider: str):
+    def for_provider(cls, provider: str):
         """Get the token from its file. If it doesn't exist, raise an error."""
-        file = Path(__file__).parent / f"cache/{provider}_token.json"
+        file = Path(__file__).parent / f"cache/.{provider}_token"
         if file.exists():
-            data = json.loads(file.read_text())
+            access_token = file.read_text()
         else:
-            data = {}
-        data.setdefault("access_token", secrets.get(f"{provider.upper()}_TOKEN", ""))
-        data.setdefault("refresh_token", secrets.get(f"{provider.upper()}_REFRESH_TOKEN", ""))
-        data.setdefault("expires_at", None)
-        if not data["access_token"] and not data["refresh_token"]:
+            access_token = secrets.get(f"{provider.upper()}_TOKEN", "")
+
+        if provider == "google":
+            refresh_token = secrets.get(f"{provider.upper()}_REFRESH_TOKEN", "")
+        else:
+            refresh_token = ""
+
+        if provider == "google" and not refresh_token or provider != "google" and not access_token:
             raise RuntimeError(f"Can't find {provider} token")
-        return cls(data["access_token"], data["refresh_token"], data["expires_at"], provider=provider)
+
+        return cls(access_token, refresh_token, provider=provider)
+
+    @classmethod
+    def delete(cls, provider: str):
+        """Delete the token for a given provider."""
+        secrets.pop(f"{provider.upper()}_TOKEN", "")
+        secrets.pop(f"{provider.upper()}_REFRESH_TOKEN", "")
+        cls.file_for_provider(provider).unlink(missing_ok=True)
 
     def _ensure_valid(self):
         """Ensure the token is valid by refreshing it if needed."""
         # If the Google token is expired, check if it is still valid
-        if self.provider == "google" and self.expires_at and dt.datetime.now() > self.expires_at:
+        if self.provider == "google":
             try:
                 data = custom_requests.get(
                     "https://oauth2.googleapis.com/tokeninfo", {"access_token": self.access_token}
                 ).json()
                 # If the token is valid, stop here
-                return
+                # return
             except OSError:
                 pass
 
@@ -105,8 +103,5 @@ class Token:
 
         # Save the new access token
         self.access_token = data.get("access_token", "")
-        expires_in = data.get("expires_in", None)
-        if expires_in:
-            self.expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_in))
 
         self.save()

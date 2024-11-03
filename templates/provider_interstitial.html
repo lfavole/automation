@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Log in via {{ provider.name }}{% endblock title %}
+{% block h1 %}{{ provider.image_tag }}{% endblock h1 %}
+
+{% block body %}
+    <p>You are about to authorize the program to access your {{ provider.name }} account.</p>
+    {% if provider.id == "google" %}
+        <div class="warning">
+            <h2>Warning</h2>
+            There might be a warning message saying that <i>Google hasn't verified this app</i>.
+            <br>
+            If you see this message, click on <i>Continue</i>.
+        </div>
+    {% endif %}
+    <form method="post" action="/{{ provider.id }}">
+        <input type="submit" value="Continue">
+    </form>
+    <form action="/{{ provider.id }}">
+        <input type="hidden" name="edit" value="1">
+        <button type="submit">Edit <code>{{ provider.id.upper() }}_CLIENT_ID</code> and <code>{{ provider.id.upper() }}_CLIENT_SECRET</code></button>
+    </form>
+{% endblock body %}

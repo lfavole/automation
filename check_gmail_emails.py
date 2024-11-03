@@ -7,7 +7,7 @@ import custom_requests
 from email_utils import Message
 from oauth_token import Token
 
-token = Token.from_file("google")
+token = Token.for_provider("google")
 
 
 def get_content(message_id: str) -> bytes:

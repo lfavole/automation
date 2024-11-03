@@ -1,0 +1,43 @@
+<div class="warning">
+    If you have already done these steps before, go to <a href="https://console.cloud.google.com/auth/clients" target="_blank">this page</a>, select your web client, copy the <i>Client ID</i> and the <i>Client secret</i>, paste them at the bottom and click on <i>Save</i>.
+</div>
+<p>Note: You can close the tabs that you open at the end of each step.</p>
+<ul>
+    <li>
+        Go to <a href="https://console.cloud.google.com/projectcreate" target="_blank">this page</a> and click on <i>Create</i>.
+        <br>
+        Put whatever you want for the <i>Project name</i>.
+    </li>
+
+    <li>
+        Go to <a href="https://console.cloud.google.com/auth/overview/create" target="_blank">this page</a> and fill in the form (if there is no form, you can close the tab).
+        <br>
+        Set the <i>Audience</i> to <i>External</i> and, finally, click on <i>Create</i>.
+    </li>
+
+   <li>Go to <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank">this page</a> and click on <i>Enable</i>.</li>
+
+    <li>
+        Go to <a href="https://console.cloud.google.com/auth/audience" target="_blank">this page</a>.
+        <br>
+        At the bottom, in the <i>Test users</i> section, click on <i>Add users</i>, add your email address and save.
+    </li>
+
+    <li>
+        Go to <a href="https://console.cloud.google.com/auth/clients" target="_blank">this page</a>.
+        <br>
+        Click on <i>Create a client</i> and select <i>Web app</i>.
+        <br>
+        Add <input type="text" class="copy" disabled value="http://127.0.0.1:5000/google"> as a <i>Redirect URI</i> and click on <i>Create</i>.
+    </li>
+
+    <li>Click on the <i>Web client</i> you just created.</li>
+
+    <li>
+        Copy the <i>Client ID</i> and the <i>Client secret</i> that you see on the webpage.
+        <br>
+        The <i>Client ID</i> looks like <input type="text" class="google-client-id" disabled value="01234567890-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com"> and the <i>Client secret</i> looks like <input type="text" class="google-client-secret" disabled value="GOCSPX-AbCdEfGhIjKlMnOpQrStUvWxYz12">.
+        <br>
+        Paste them below and click on <i>Save</i>.
+    </li>
+</ul>

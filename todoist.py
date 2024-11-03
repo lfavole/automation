@@ -11,7 +11,7 @@ from typing import Any, Iterable, Self
 import custom_requests
 from oauth_token import Token
 
-token = Token.from_file("todoist")
+token = Token.for_provider("todoist")
 
 
 def to_json(data):

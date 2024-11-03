@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% set index = 1 %}
+{% block title %}Setup{% endblock title %}
+{% block h1 %}Automation setup{% endblock h1 %}
+
+{% block body %}
+    <p>Please select a provider to set up:</p>
+
+    <ul>
+    {% for provider in providers %}
+        <li{% if providers_ok[provider.id] %} class="ok"{% endif %}>
+            <a href="/{{ provider.id }}">{{ provider.image_tag }}</a>
+        </li>
+    {% endfor %}
+    </ul>
+
+    {% if all_ok %}
+        <h2>You have set up all the providers!</h2>
+        <form action="/secrets">
+            <input type="submit" value="Add the secrets to the repo">
+        </form>
+    {% endif %}
+{% endblock body %}

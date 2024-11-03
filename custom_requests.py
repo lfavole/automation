@@ -92,7 +92,7 @@ def request(
     params=None,
     data=None,
     headers=None,
-    token: Optional["Token"] = None,
+    token: Optional["Token | str"] = None,
     json=None,  # pylint: disable=W0621
 ):
     """Make a request."""
@@ -103,7 +103,9 @@ def request(
     if headers is None:
         headers = {}
     if token:
-        headers["Authorization"] = f"Bearer {token.access_token}"
+        from oauth_token import Token
+
+        headers["Authorization"] = f"Bearer {token.access_token if isinstance(token, Token) else token}"
     if json:
         headers["Content-Type"] = "application/json"
         data = dumps(json)
@@ -130,6 +132,11 @@ def get(*args, **kwargs):
 def post(*args, **kwargs):
     """Make a POST request."""
     return request("POST", *args, **kwargs)
+
+
+def put(*args, **kwargs):
+    """Make a PUT request."""
+    return request("PUT", *args, **kwargs)
 
 
 def delete(*args, **kwargs):

@@ -1,5 +1,3 @@
 *.pyc
 .env
-*_token.json
-message_*
-todoist_status_*.json
+cache
