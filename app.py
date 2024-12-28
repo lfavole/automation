@@ -403,7 +403,7 @@ def status():
     data = custom_requests.get(
         f"https://api.github.com/repos/{repo_url_part}/actions/runs/{workflow_run_id}/jobs", token=token
     ).json()["jobs"][0]
-    return Response(to_json({"status": data["status"], "job_url": data["html_url"]}))
+    return Response(to_json({"status": data["status"], "conclusion": data["conclusion"], "job_url": data["html_url"]}))
 
 
 if __name__ == "__main__":

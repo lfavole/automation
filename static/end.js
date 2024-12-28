@@ -15,6 +15,7 @@ window.addEventListener("DOMContentLoaded", async function() {
         document.head.appendChild(script);
     }
     var statusElement = document.querySelector(".status");
+    var conclusionElement = document.querySelector(".conclusion");
     var loader = document.querySelector(".loader");
     var finalMessage = document.createElement("div");
     async function check() {
@@ -22,11 +23,13 @@ window.addEventListener("DOMContentLoaded", async function() {
         var data = await resp.json();
         var status = data.status;
         statusElement.innerText = status;
-        if(status == "completed") {
+        var conclusion = data.conclusion;
+        conclusionElement.innerText = conclusion;
+        if(status == "completed" && conclusion == "success") {
             finalMessage.className = "success";
             finalMessage.innerHTML = 'Congratulations, everything works!<br>You can go to the <a href="' + data.job_url + '" target="_blank">workflow page</a> to check the logs.<br>You can also revoke the token (go to the previous tab and click on <i>Delete</i>).';
             addConfetti();
-        } else if(status != "in_progress" && status != "queued" && status != "requested" && status != "waiting" && status != "pending") {
+        } else if(status != "in_progress" && status != "queued" && status != "requested" && status != "waiting" && status != "pending" && conclusion != "action_required" && conclusion != "neutral" && conclusion != "skipped") {
             finalMessage.className = "error";
             finalMessage.innerHTML = 'Oops, there was an unexpected error!<br>Go to the <a href="' + data.job_url + '" target="_blank">workflow page</a> to see what happened.';
         } else {
