@@ -147,7 +147,7 @@ def gmx():
     except imaplib.IMAP4.error as err:
         error_message = err.args[0]
         if isinstance(error_message, bytes):
-            error_message = error_message.decode()
+            error_message = error_message.decode(errors="replace")
         return provider_error(providers["gmx"], error_message, delete=True)
     finally:
         conn.logout()
@@ -342,7 +342,7 @@ def add_secrets():
             pkey = public.PublicKey(public_key.encode("utf-8"), encoding.Base64Encoder())  # type: ignore
             sealed_box = public.SealedBox(pkey)
             encrypted = sealed_box.encrypt(secret_value.encode("utf-8"))
-            return b64encode(encrypted).decode("utf-8")
+            return b64encode(encrypted).decode(errors="replace")
 
         token = request.form["token"]
         session["GITHUB_PAT"] = token

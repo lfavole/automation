@@ -72,7 +72,7 @@ class Response:
     def text(self):
         """The text content of the response."""
         if self._text is None:
-            self._text = self.content.decode()
+            self._text = self.content.decode(errors="replace")
         return self._text
 
     def json(self):

@@ -47,7 +47,11 @@ class Message:
     @cached_property
     def hashed_id(self):
         """A short representation of a message ID."""
-        return self.platform + "_" + base64.b64encode(hashlib.md5(self.id.strip("<>").encode()).digest())[:16].decode()
+        return (
+            self.platform
+            + "_"
+            + base64.b64encode(hashlib.md5(self.id.strip("<>").encode()).digest())[:16].decode(errors="replace")
+        )
 
 
 class TagsStripper(HTMLParser):
@@ -69,12 +73,12 @@ def get_body(msg: email.message.Message) -> str:
     """Return the body of a `Message` as plain text."""
     for part in msg.walk():
         if part.get_content_type() == "text/plain":
-            return part.get_payload(decode=True).decode()
+            return part.get_payload(decode=True).decode(errors="replace")
 
     for part in msg.walk():
         if part.get_content_type() == "text/html":
             parser = TagsStripper()
-            parser.feed(part.get_payload(decode=True).decode())
+            parser.feed(part.get_payload(decode=True).decode(errors="replace"))
             return parser.get_data()
 
     return ""
