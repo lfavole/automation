@@ -65,19 +65,18 @@ class EmailParser:
         }
 
         # Find the expiry date
-        match = re.search(r"will expire on (?:\*\*)?(.*?)(?:\*\*)?", message.body)
+        match = re.search(r"will\s+expire\s+on\s+(?:\*\*)?([\d-]+)(?:\*\*)?", message.body)
         if match:
-            date = dt.date.fromisoformat(match[1])
+            try:
+                ret["due"] = dt.date.fromisoformat(match[1])
+            except ValueError:
+                pass
         elif "has expired" in message.subject:
             # If the certificate has already expired, it happened when we received the email
-            date = message.date.date()
-        else:
-            return ret
-
-        ret["due"] = date
+            ret["due"] = message.date.date()
 
         # Find the link that points to the certificate
-        match = re.search(r"View SSL Certificate: (https?://.*)", message.body)
+        match = re.search(r"View SSL Certificate:\s+(https?://.*)", message.body)
         if match:
             ret["description"] = f"[Voir le certificat]({match[1]})"
 
