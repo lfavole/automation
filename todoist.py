@@ -11,8 +11,6 @@ from typing import Any, Iterable, Self
 import custom_requests
 from oauth_token import Token
 
-token = Token.for_provider("todoist")
-
 
 def to_json(data):
     """Return the compact JSON representation of an object."""
@@ -55,7 +53,7 @@ class SyncStatus:
                 "resource_types": to_json(self.resource_types),
                 "commands": to_json(self.commands.values()),
             },
-            token=token,
+            token=Token.for_provider("todoist"),
         ).json()
         for key, value in data.items():
             if key in ("sync_status", "temp_id_mapping", "sync_token", "full_sync") or not isinstance(value, list):

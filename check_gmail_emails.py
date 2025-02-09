@@ -7,8 +7,6 @@ import custom_requests
 from email_utils import Message
 from oauth_token import Token
 
-token = Token.for_provider("google")
-
 
 def get_content(message_id: str) -> bytes:
     """Get the content of a message from the ID given by the Gmail API."""
@@ -17,7 +15,7 @@ def get_content(message_id: str) -> bytes:
         return file.read_bytes()
     data = custom_requests.get(
         f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}?format=raw",
-        token=token,
+        token=Token.for_provider("google"),
     ).json()
     ret = base64.urlsafe_b64decode(data["raw"])
     file.parent.mkdir(parents=True, exist_ok=True)
@@ -35,7 +33,7 @@ def get_gmail_emails():
                 "includeSpamTrash": "false",
                 "labelIds": "INBOX",
             },
-            token=token,
+            token=Token.for_provider("google"),
         )
     )
 

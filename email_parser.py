@@ -27,6 +27,16 @@ class EmailParser:
             "status": status,
         }
 
+        if message.id == "error":
+            params.update(
+                {
+                    "title": "Corriger l'erreur de connexion",
+                    "description": f"**{message.subject}**\n\n```\n{message.body}"[:16379] + "\n```",
+                    "due": message.date,
+                    "priority": 4,
+                }
+            )
+
         if "List-ID" in message.headers:
             params.update(cls.parse_newsletter(message))
 

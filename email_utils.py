@@ -7,6 +7,7 @@ import email.message
 import email.policy
 import email.utils
 import hashlib
+import traceback
 from dataclasses import dataclass
 from functools import cached_property
 from html.parser import HTMLParser
@@ -43,6 +44,19 @@ class Message:
         body = get_body(msg)
 
         return cls(headers["Message-ID"], sender, subject, date, headers, body, platform)
+
+    @classmethod
+    def error(cls, error: Exception, platform: str):
+        """Create a `Message` for an error."""
+        return cls(
+            "error",
+            "",
+            f"{type(error).__name__}: {error}",
+            dt.datetime.now(),
+            custom_requests.CaseInsensitiveDict(),
+            "".join(traceback.format_exception(error)),
+            platform,
+        )
 
     @cached_property
     def hashed_id(self):

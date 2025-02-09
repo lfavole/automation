@@ -1,7 +1,7 @@
 """The main entry point to run this program."""
 
 import re
-from itertools import chain
+import threading
 from typing import Iterable
 
 from check_gmail_emails import get_gmail_emails
@@ -106,5 +106,20 @@ def check_deleted_messages(tasks: list[Task], seen_hashed_message_ids: list[str]
                 print("Duplicate task deleted")
 
 
+def handle_provider(provider: str, get_emails):
+    """Handle the emails for a given provider."""
+    try:
+        handle_message_list(get_emails())
+    except Exception as err:  # pylint: disable=W0718
+        handle_message_list([Message.error(err, provider)])
+
+
 if __name__ == "__main__":
-    handle_message_list(chain(get_gmail_emails(), get_gmx_emails()))
+    threads = [
+        threading.Thread(target=handle_provider, args=("gmail", get_gmail_emails)),
+        threading.Thread(target=handle_provider, args=("gmx", get_gmx_emails)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
