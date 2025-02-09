@@ -1,9 +1,7 @@
 """The main entry point to run this program."""
 
-import concurrent.futures
 import hashlib
 import re
-import threading
 import traceback
 from pathlib import Path
 from typing import Iterable
@@ -16,20 +14,17 @@ from get_secrets import secrets
 from send_email import send_email
 from todoist import Comment, SyncStatus, Task
 
-error_lock = threading.Lock()
-
 
 def send_todoist_error(err: Exception):
     """Send an email with the Todoist sync error message to the user."""
-    with error_lock:
-        subject = "An error occured while adding tasks to Todoist"
-        message = f"""\
+    subject = "An error occured while adding tasks to Todoist"
+    message = f"""\
 An error occured while adding tasks to Todoist:
 {type(err).__name__}: {err}
 
 {"".join(traceback.format_exception(err))}
 """
-        html_message = f"""\
+    html_message = f"""\
 <!DOCTYPE html>
 <html>
 <head>
@@ -42,17 +37,17 @@ An error occured while adding tasks to Todoist:
 </body>
 </html>
 """
-        lock_text = f"{type(err).__name__}: {err}"
-        # Remove UUIDs from the error message
-        lock_text = re.sub(r"\b[0-9a-f-]{36}\b", "[UUID]", lock_text)
-        hash = hashlib.sha256(lock_text.encode()).hexdigest()
-        lockfile = Path(__file__).parent / f"cache/error_email_{hash}"
-        if lockfile.exists():
-            print("Error email already sent")
-            return
-        lockfile.touch()
-        send_email(secrets["GMX_USER"], subject, message, html_message)
-        print("Error email sent")
+    lock_text = f"{type(err).__name__}: {err}"
+    # Remove UUIDs from the error message
+    lock_text = re.sub(r"\b[0-9a-f-]{36}\b", "[UUID]", lock_text)
+    hash = hashlib.sha256(lock_text.encode()).hexdigest()
+    lockfile = Path(__file__).parent / f"cache/error_email_{hash}"
+    if lockfile.exists():
+        print("Error email already sent")
+        return
+    lockfile.touch()
+    send_email(secrets["GMX_USER"], subject, message, html_message)
+    print("Error email sent")
 
 
 def handle_message_list(messages: Iterable[Message]):
@@ -158,31 +153,22 @@ def check_deleted_messages(tasks: list[Task], seen_hashed_message_ids: list[str]
                 print("Duplicate task deleted")
 
 
-def handle_provider(provider: str, get_emails):
-    """Handle the emails for a given provider."""
-    try:
-        handle_message_list(get_emails())
-    except Exception as err:  # pylint: disable=W0718
-        handle_message_list([Message.error(err, provider)])
-
-
 if __name__ == "__main__":
-    failed = False
+    emails = []
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [
-            executor.submit(handle_provider, "gmail", get_gmail_emails),
-            executor.submit(handle_provider, "gmx", get_gmx_emails),
-        ]
-        for future in futures:
-            try:
-                future.result()
-            except Exception:  # pylint: disable=W0703
-                failed = True
-                traceback.print_exc()
+    try:
+        emails.extend(get_gmail_emails())
+    except Exception as err:  # pylint: disable=W0718
+        emails.append(Message.error(err, "gmail"))
 
-    if not failed:
-        # Remove old error lockfiles
-        print("Cleaning up error lockfiles")
-        for file in Path(__file__).parent.glob("cache/error_email_*"):
-            file.unlink()
+    try:
+        emails.extend(get_gmx_emails())
+    except Exception as err:  # pylint: disable=W0718
+        emails.append(Message.error(err, "gmx"))
+
+    handle_message_list(emails)
+
+    # Remove old error lockfiles
+    print("Cleaning up error lockfiles")
+    for file in Path(__file__).parent.glob("cache/error_email_*"):
+        file.unlink()
