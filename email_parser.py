@@ -37,7 +37,9 @@ class EmailParser:
                 }
             )
 
-        if "List-ID" in message.headers:
+        if "List-ID" in message.headers or any(
+            keyword in message.sender for keyword in ("noreply", "no-reply", "donotreply", "ne-pas-repondre")
+        ):
             params.update(cls.parse_newsletter(message))
 
         if "Your SSL certificate" in message.subject and "issued" not in message.subject:
