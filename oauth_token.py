@@ -71,9 +71,16 @@ class Token:
                     "https://oauth2.googleapis.com/tokeninfo", {"access_token": self.access_token}
                 ).json()
                 # If the token is valid, stop here
-                # return
+                return
             except OSError:
                 pass
+
+        if self.provider == "todoist":
+            # Check if the Todoist token is valid
+            try:
+                custom_requests.get("https://api.todoist.com/rest/v2/projects", token=self)
+            except OSError as err:
+                raise ValueError("The Todoist token is invalid") from err
 
         # Try to refresh the token
         token_refresh_url = {
