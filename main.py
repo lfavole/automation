@@ -5,6 +5,7 @@ import re
 import traceback
 from pathlib import Path
 from typing import Iterable
+from urllib.error import HTTPError
 
 from check_gmail_emails import get_gmail_emails
 from check_gmx_emails import get_gmx_emails
@@ -79,6 +80,9 @@ def handle_message_list(messages: Iterable[Message]):
     try:
         status.sync()
     except Exception as err:  # pylint: disable=W0718
+        if isinstance(err, HTTPError) and "Service Unavailable" in err:
+            # don't send the email
+            raise
         send_todoist_error(err)
         raise
 
