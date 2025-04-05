@@ -20,9 +20,9 @@ def send_todoist_error(err: Exception):
     """Send an email with the Todoist sync error message to the user."""
     if isinstance(err, HTTPError) and any(message in str(err) for message in ("Bad Gateway", "Service Unavailable")):
         return False  # don't send the email
-    subject = "An error occured while adding tasks to Todoist"
+    subject = "An error occurred while adding tasks to Todoist"
     message = f"""\
-An error occured while adding tasks to Todoist:
+An error occurred while adding tasks to Todoist:
 {type(err).__name__}: {err}
 
 {"".join(traceback.format_exception(err))}
@@ -34,7 +34,7 @@ An error occured while adding tasks to Todoist:
 <title>{subject}</title>
 </head>
 <body>
-<p>An error occured while adding tasks to Todoist:</p>
+<p>An error occurred while adding tasks to Todoist:</p>
 <p><b>{type(err).__name__}</b>: {err}</p>
 <pre>{"".join(traceback.format_exception(err))}</pre>
 </body>
