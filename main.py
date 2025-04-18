@@ -47,7 +47,7 @@ An error occurred while adding tasks to Todoist:
     lockfile = Path(__file__).parent / f"cache/error_email_{hash}"
     if lockfile.exists():
         print("Error email already sent")
-        return
+        return True
     lockfile.touch()
     send_email(secrets["GMX_USER"], subject, message, html_message)
     print("Error email sent")
