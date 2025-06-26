@@ -18,6 +18,14 @@ from todoist import Comment, SyncStatus, Task
 
 def send_todoist_error(err: Exception):
     """Send an email with the Todoist sync error message to the user."""
+    # If we don't need to send the error, stop here
+    if isinstance(err, HTTPError):
+        err_to_check = err
+        while err_to_check:
+            if any(message in str(err) for message in ("Bad Gateway", "Service Unavailable")):
+                return
+            err_to_check = err_to_check.__cause__
+
     subject = "An error occurred while adding tasks to Todoist"
     message = f"""\
 An error occurred while adding tasks to Todoist:
@@ -83,8 +91,7 @@ def handle_message_list(messages: Iterable[Message]):
     try:
         status.sync()
     except Exception as err:  # pylint: disable=W0718
-        if send_todoist_error(err):
-            raise  # propagate the error only if the email has been sent
+        send_todoist_error(err)
 
 
 def handle_new_message(message: Message, tasks: list[Task], status: SyncStatus):
