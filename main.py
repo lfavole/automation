@@ -64,14 +64,7 @@ def handle_message_list(messages: Iterable[Message]):
     Compare a message list with the message IDs present in the tasks and call the
     `handle_new_message` and `handle_deleted_message` functions.
     """
-    try:
-        status = SyncStatus(["items", "notes"])
-    except Exception as err:  # pylint: disable=W0718
-        if not isinstance(err, HTTPError) or not any(
-            message in str(err) for message in ("Bad Gateway", "Service Unavailable")
-        ):
-            raise  # propagate the error only if we don't send the email
-        send_todoist_error(err)
+    status = SyncStatus(["items", "notes"])
 
     tasks = Task.all(status)
 
@@ -88,10 +81,7 @@ def handle_message_list(messages: Iterable[Message]):
     check_deleted_messages(tasks, seen_hashed_message_ids)
 
     # Send the changes to Todoist
-    try:
-        status.sync()
-    except Exception as err:  # pylint: disable=W0718
-        send_todoist_error(err)
+    status.sync()
 
 
 def handle_new_message(message: Message, tasks: list[Task], status: SyncStatus):
@@ -177,7 +167,12 @@ if __name__ == "__main__":
     except Exception as err:  # pylint: disable=W0718
         emails.append(Message.error(err, "gmx"))
 
-    handle_message_list(emails)
+    try:
+        handle_message_list(emails)
+    except Exception as err:  # pylint: disable=W0718
+        # we catch all possible errors because if a command exceeds
+        # the `MAX_COMMANDS` threshold, it will immediately sync
+        send_todoist_error(err)
 
     # Remove old error lockfiles
     print("Cleaning up error lockfiles")
