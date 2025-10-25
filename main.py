@@ -24,7 +24,7 @@ def send_todoist_error(err: Exception):
         while err_to_check:
             if any(message in str(err) for message in ("Bad Gateway", "Service Unavailable")):
                 return
-            err_to_check = err_to_check.__cause__
+            err_to_check = err_to_check.__context__
 
     subject = "An error occurred while adding tasks to Todoist"
     message = f"""\
