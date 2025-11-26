@@ -5,7 +5,6 @@ import re
 import traceback
 from pathlib import Path
 from typing import Iterable
-from urllib.error import HTTPError
 
 from check_gmail_emails import get_gmail_emails
 from check_gmx_emails import get_gmx_emails
@@ -19,10 +18,10 @@ from todoist import Comment, SyncStatus, Task
 def send_todoist_error(err: Exception):
     """Send an email with the Todoist sync error message to the user."""
     # If we don't need to send the error, stop here
-    if isinstance(err, HTTPError):
+    if isinstance(err, OSError):
         err_to_check = err
         while err_to_check:
-            if any(message in str(err) for message in ("Bad Gateway", "Service Unavailable")):
+            if any(message in str(err_to_check) for message in ("Bad Gateway", "Service Unavailable")):
                 return
             err_to_check = err_to_check.__context__
 
