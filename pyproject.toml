@@ -7,40 +7,19 @@ requires-python = ">=3.12"
 dependencies = ["flask", "pynacl"]
 
 	[project.optional-dependencies]
-	dev = ["black", "flake8", "isort", "pylint"]
+	dev = ["ruff"]
 
 	[project.urls]
 	Homepage = "https://github.com/lfavole/automation"
 
-[tool.black]
+[tool.ruff]
 line-length = 120
 
-[tool.isort]
-profile = "black"
-line_length = 120
+[tool.ruff.lint]
+preview = true
 
-[tool.pylint.main]
-jobs = 0
-disable = [
-    "bad-indentation",
-    "bare-except",
-    "fixme",
-    "global-statement",
-    "import-outside-toplevel",
-    "invalid-str-returned",
-    "line-too-long",
-    "missing-module-docstring",
-    "missing-timeout",
-    "no-member",
-    "protected-access",
-    "unspecified-encoding",
-]
-include-naming-hint = "y"
-
-[tool.pylint.basic]
-allowed-redefined-builtins = "id,hash"
-good-names = ["f", "i", "id"]
-no-docstring-rgx = "^(main|__.*__)$"
+[tool.ruff.format]
+preview = true
 
 [tool.setuptools]
 py-modules = []

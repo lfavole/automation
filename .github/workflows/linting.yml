@@ -9,30 +9,32 @@ on:
 jobs:
   linting:
     name: Linting
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - {name: black, command: black . --check}
-          - {name: flake8, command: flake8 .}
-          - {name: isort, command: isort . --check}
-          - {name: pylint, command: 'pylint *.py --evaluation "0 if fatal else max(0, 10 - error - warning)"'}
 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Install uv
+        run: curl -LsSf https://github.com/astral-sh/uv/releases/latest/download/uv-installer.sh | sh
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
-          cache: pip
+          python-version-file: pyproject.toml
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: ${{ runner.os }}-uv-linting-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-uv-linting-
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
+        run: uv sync --extra dev
 
-      - name: Run ${{ matrix.name }}
-        run: python -m ${{ matrix.command }}
+      - name: Run ruff check
+        run: uv run ruff check --output-format github .
+
+      - name: Run ruff format --check
+        run: uv run ruff format --check .

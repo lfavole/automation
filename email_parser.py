@@ -28,14 +28,12 @@ class EmailParser:
         }
 
         if message.id == "error":
-            params.update(
-                {
-                    "title": "Corriger l'erreur de connexion",
-                    "description": f"**{message.subject}**\n\n```\n{message.body}"[:16379] + "\n```",
-                    "due": message.date,
-                    "priority": 4,
-                }
-            )
+            params.update({
+                "title": "Corriger l'erreur de connexion",
+                "description": f"**{message.subject}**\n\n```\n{message.body}"[:16379] + "\n```",
+                "due": message.date,
+                "priority": 4,
+            })
 
         if "List-ID" in message.headers or any(
             keyword in message.sender for keyword in ("noreply", "no-reply", "donotreply", "ne-pas-repondre")
