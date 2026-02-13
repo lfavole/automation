@@ -53,9 +53,17 @@ An error occurred while adding tasks to Todoist:
     if lockfile.exists():
         print("Error email already sent")
         return
+    cleanup_lockfiles()
     lockfile.touch()
     send_email(secrets["GMX_USER"], subject, message, html_message)
     print("Error email sent")
+
+
+def cleanup_lockfiles():
+    # Remove old error lockfiles
+    print("Cleaning up error lockfiles")
+    for file in Path(__file__).parent.glob("cache/error_email_*"):
+        file.unlink()
 
 
 def handle_message_list(messages: Iterable[Message]):
@@ -172,8 +180,6 @@ if __name__ == "__main__":
         # we catch all possible errors because if a command exceeds
         # the `MAX_COMMANDS` threshold, it will immediately sync
         send_todoist_error(err)
-
-    # Remove old error lockfiles
-    print("Cleaning up error lockfiles")
-    for file in Path(__file__).parent.glob("cache/error_email_*"):
-        file.unlink()
+        raise
+    else:
+        cleanup_lockfiles()

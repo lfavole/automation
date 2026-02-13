@@ -47,7 +47,7 @@ class SyncStatus:
     def sync(self):
         """Sync the changes with the Todoist API."""
         data = custom_requests.post(
-            "https://api.todoist.com/sync/v9/sync",
+            "https://api.todoist.com/api/v1/sync",
             data={
                 "sync_token": self.data["sync_token"],
                 "resource_types": to_json(self.resource_types),

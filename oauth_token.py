@@ -78,7 +78,7 @@ class Token:
         if self.provider == "todoist":
             # Check if the Todoist token is valid
             try:
-                custom_requests.get("https://api.todoist.com/rest/v2/projects", token=self)
+                custom_requests.get("https://api.todoist.com/api/v1/user", token=self)
             except OSError as err:
                 raise ValueError("The Todoist token is invalid") from err
 
